@@ -1,10 +1,25 @@
+import time
 from fastapi.testclient import TestClient
 from app.main import app
 from app.config import settings
-from app.services import user_service
-from app.models import UserCreate
+from app.services import user_service, customer_service
+from app.models import UserCreate, normalize_indian_phone
 
 client = TestClient(app)
+
+def test_normalize_indian_phone_unit():
+    assert normalize_indian_phone("9876543210") == "+919876543210"
+    assert normalize_indian_phone("+919876543210") == "+919876543210"
+    assert normalize_indian_phone("+91 98765 43210") == "+919876543210"
+    assert normalize_indian_phone("+91-9876543210") == "+919876543210"
+    assert normalize_indian_phone("09876543210") == "+919876543210"
+    assert normalize_indian_phone("919876543210") == "+919876543210"
+    
+    try:
+        normalize_indian_phone("12345")
+        assert False, "Should have raised ValueError"
+    except ValueError:
+        pass
 
 def get_or_create_test_user():
     username = f"TestPlatform_{settings.PORT}"
@@ -63,11 +78,16 @@ def test_api_requires_both_secret_key_and_user_api_key():
     get_res = client.get("/api/customers")
     assert get_res.status_code == 401
 
-def test_create_customer_with_both_keys():
+def test_create_customer_with_indian_phone_and_uniqueness():
     test_user = get_or_create_test_user()
     valid_sk = settings.SECRET_KEY
     valid_ak = test_user.api_key
 
+    # Generate a unique 10-digit phone for this test run
+    random_suffix = str(int(time.time() * 100))[-8:]
+    unique_10_digit = f"98{random_suffix}"  # 10 digits total
+
+    # 1. Pass 10-digit phone -> must automatically add +91 and store as +91XXXXXXXXXX
     response = client.post(
         "/api/customers",
         headers={
@@ -75,7 +95,7 @@ def test_create_customer_with_both_keys():
             "X-API-Key": valid_ak,
         },
         json={
-            "phone": "9998887776",
+            "phone": unique_10_digit,
             "name": "Rohan Sharma",
             "city": "Jaipur"
         }
@@ -83,9 +103,55 @@ def test_create_customer_with_both_keys():
     assert response.status_code == 201
     data = response.json()
     assert data["success"] is True
-    assert data["data"]["phone"] == "9998887776"
-    # When submitted via User API Key, 'from' is automatically set to the user's username
+    # The phone MUST be stored in +91XXXXXXXXXX format
+    expected_phone = f"+91{unique_10_digit}"
+    assert data["data"]["phone"] == expected_phone
     assert data["data"]["from"] == test_user.username
+
+    # 2. Duplicate phone check: trying to create another customer with the SAME phone must fail with 409 Conflict
+    dup_res = client.post(
+        "/api/customers",
+        headers={
+            "X-Secret-Key": valid_sk,
+            "X-API-Key": valid_ak,
+        },
+        json={
+            "phone": expected_phone,
+            "name": "Duplicate Person"
+        }
+    )
+    assert dup_res.status_code == 409
+    assert "already exists" in dup_res.json()["detail"]
+
+    # 3. Duplicate phone check: trying to create with 10-digit variant of same phone must also fail with 409 Conflict
+    dup_res2 = client.post(
+        "/api/customers",
+        headers={
+            "X-Secret-Key": valid_sk,
+            "X-API-Key": valid_ak,
+        },
+        json={
+            "phone": unique_10_digit,
+            "name": "Duplicate Person 2"
+        }
+    )
+    assert dup_res2.status_code == 409
+    assert "already exists" in dup_res2.json()["detail"]
+
+    # 4. Invalid phone number format check -> 422 Unprocessable
+    invalid_phone_res = client.post(
+        "/api/customers",
+        headers={
+            "X-Secret-Key": valid_sk,
+            "X-API-Key": valid_ak,
+        },
+        json={
+            "phone": "12345",  # Too short, not 10 digits
+            "name": "Invalid Phone User"
+        }
+    )
+    assert invalid_phone_res.status_code == 422
+    assert "Indian phone numbers must be 10 digits" in str(invalid_phone_res.json())
 
 def test_get_customers_with_both_keys():
     test_user = get_or_create_test_user()

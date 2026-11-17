@@ -19,12 +19,18 @@ def create_customer(
     ip_address: Optional[str] = None,
     user_agent: Optional[str] = None,
 ) -> CustomerInDB:
-    """Insert a new customer document into MongoDB."""
+    """Insert a new customer document into MongoDB with unique phone enforcement."""
     col = get_customers_collection()
+    phone = data.phone.strip()
+
+    # Enforce uniqueness
+    existing = col.find_one({"phone": phone})
+    if existing:
+        raise ValueError(f"Customer with phone number '{phone}' already exists.")
+
     now = datetime.now(timezone.utc)
-    
     doc = {
-        "phone": data.phone.strip(),
+        "phone": phone,
         "profile": data.profile.strip() if data.profile else None,
         "name": data.name.strip() if data.name else None,
         "email": data.email.strip().lower() if data.email else None,
@@ -42,7 +48,13 @@ def create_customer(
         }
     }
     
-    result = col.insert_one(doc)
+    try:
+        result = col.insert_one(doc)
+    except Exception as e:
+        if "duplicate key" in str(e).lower() or "e11000" in str(e).lower():
+            raise ValueError(f"Customer with phone number '{phone}' already exists.")
+        raise
+
     doc["_id"] = result.inserted_id
     return doc_to_customer(doc)
 
@@ -57,18 +69,19 @@ def get_customer_by_id(customer_id: str) -> Optional[CustomerInDB]:
     return doc_to_customer(doc) if doc else None
 
 def get_customer_by_phone(phone: str) -> Optional[CustomerInDB]:
-    """Retrieve the most recent customer entry by phone number."""
+    """Retrieve the customer entry by normalized phone number."""
     col = get_customers_collection()
-    doc = col.find_one({"phone": phone.strip()}, sort=[("created_at", DESCENDING)])
+    doc = col.find_one({"phone": phone.strip()})
     return doc_to_customer(doc) if doc else None
 
 def update_customer(customer_id: str, data: CustomerUpdate) -> Optional[CustomerInDB]:
-    """Update existing customer by ObjectId."""
+    """Update existing customer by ObjectId with unique phone enforcement."""
     try:
         obj_id = ObjectId(customer_id)
     except Exception:
         return None
     
+    col = get_customers_collection()
     update_data = {}
     for key, value in data.model_dump(exclude_unset=True).items():
         if key == "from_source":
@@ -78,14 +91,25 @@ def update_customer(customer_id: str, data: CustomerUpdate) -> Optional[Customer
             
     if not update_data:
         return get_customer_by_id(customer_id)
+    
+    # If phone is updated, ensure no duplicate exists on another record
+    if "phone" in update_data:
+        new_phone = update_data["phone"]
+        existing = col.find_one({"phone": new_phone, "_id": {"$ne": obj_id}})
+        if existing:
+            raise ValueError(f"Another customer with phone number '{new_phone}' already exists.")
         
     update_data["updated_at"] = datetime.now(timezone.utc)
-    col = get_customers_collection()
-    result = col.find_one_and_update(
-        {"_id": obj_id},
-        {"$set": update_data},
-        return_document=True
-    )
+    try:
+        result = col.find_one_and_update(
+            {"_id": obj_id},
+            {"$set": update_data},
+            return_document=True
+        )
+    except Exception as e:
+        if "duplicate key" in str(e).lower() or "e11000" in str(e).lower():
+            raise ValueError(f"Another customer with phone number '{update_data.get('phone')}' already exists.")
+        raise
     return doc_to_customer(result) if result else None
 
 def delete_customer(customer_id: str) -> bool:

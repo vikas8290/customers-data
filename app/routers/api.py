@@ -112,8 +112,18 @@ async def collect_customer(
             ip_address=client_ip,
             user_agent=user_agent
         )
+    except ValueError as ve:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(ve)
+        )
     except Exception as e:
         err_msg = str(e)
+        if "duplicate key" in err_msg.lower() or "e11000" in err_msg.lower():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Customer with phone number '{data.phone}' already exists."
+            )
         if "SSL handshake failed" in err_msg or "ServerSelectionTimeoutError" in err_msg or "TLSV1_ALERT" in err_msg:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -188,7 +198,24 @@ def get_customer(customer_id: str):
 )
 def update_customer(customer_id: str, data: CustomerUpdate):
     """Update details of an existing customer."""
-    updated = customer_service.update_customer(customer_id, data)
+    try:
+        updated = customer_service.update_customer(customer_id, data)
+    except ValueError as ve:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(ve)
+        )
+    except Exception as e:
+        err_msg = str(e)
+        if "duplicate key" in err_msg.lower() or "e11000" in err_msg.lower():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Another customer with phone number '{data.phone}' already exists."
+            )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {err_msg}"
+        )
     if not updated:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

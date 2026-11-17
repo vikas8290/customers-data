@@ -35,7 +35,16 @@ class DatabaseManager:
             # Customers collection indexes
             cust_col = self.get_customers_collection()
             cust_col.create_index([("created_at", DESCENDING)])
-            cust_col.create_index([("phone", 1)])
+            try:
+                index_info = cust_col.index_information()
+                if "phone_1" in index_info and not index_info["phone_1"].get("unique"):
+                    try:
+                        cust_col.drop_index("phone_1")
+                    except Exception as de:
+                        logger.warning(f"Could not drop legacy non-unique phone_1 index: {de}")
+                cust_col.create_index([("phone", 1)], unique=True)
+            except Exception as e:
+                logger.warning(f"Could not create unique index on customer phone: {e}")
             cust_col.create_index([("from", 1)])
 
             # Users collection indexes

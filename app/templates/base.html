@@ -183,7 +183,7 @@
                         <span class="text-blue-400 font-bold">POST</span>
                         <span id="apiEndpointUrl" class="font-mono text-slate-200">https://your-domain.onrender.com/api/customers</span>
                     </div>
-                    <p class="text-[11px] text-slate-500 mt-1.5">Only <span class="font-semibold text-slate-700">phone</span> is strictly required. Name, email, address, landmark, city, state, pincode, and profile are optional.</p>
+                    <p class="text-[11px] text-slate-500 mt-1.5">Only <span class="font-semibold text-slate-700">phone</span> is strictly required (Indian 10-digit or +91 format, stored as <code class="font-mono text-indigo-600 bg-indigo-50 px-1 py-0.5 rounded font-bold">+91XXXXXXXXXX</code>, unique). Other fields are optional.</p>
                 </div>
 
                 <!-- JavaScript Fetch Example -->
@@ -205,7 +205,7 @@ async function submitCustomerLead() {
       'X-API-Key': 'YOUR_USER_API_KEY'     // User/Platform API Key (REQUIRED)
     },
     body: JSON.stringify({
-      phone: "+91 9876543210", // REQUIRED: only phone is mandatory
+      phone: "9876543210", // REQUIRED: 10-digit or +919876543210 (stored as +91XXXXXXXXXX, must be unique)
       name: "Rohan Sharma",    // optional
       email: "rohan@example.com", // optional
       address: "123 Green Park",  // optional

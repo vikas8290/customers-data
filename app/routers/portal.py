@@ -1,5 +1,6 @@
 from typing import Optional
 from datetime import datetime
+from urllib.parse import quote_plus
 from fastapi import APIRouter, Request, Form, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
@@ -170,7 +171,8 @@ def portal_add_customer(
         customer_service.create_customer(data, ip_address="admin-portal")
         return RedirectResponse(url="/dashboard?msg=added", status_code=status.HTTP_302_FOUND)
     except Exception as e:
-        return RedirectResponse(url=f"/dashboard?error={str(e)}", status_code=status.HTTP_302_FOUND)
+        err_text = quote_plus(str(e))
+        return RedirectResponse(url=f"/dashboard?error={err_text}", status_code=status.HTTP_302_FOUND)
 
 @router.post("/portal/customer/{customer_id}/edit", include_in_schema=False)
 def portal_edit_customer(
@@ -207,7 +209,8 @@ def portal_edit_customer(
         customer_service.update_customer(customer_id, data)
         return RedirectResponse(url="/dashboard?msg=updated", status_code=status.HTTP_302_FOUND)
     except Exception as e:
-        return RedirectResponse(url=f"/dashboard?error={str(e)}", status_code=status.HTTP_302_FOUND)
+        err_text = quote_plus(str(e))
+        return RedirectResponse(url=f"/dashboard?error={err_text}", status_code=status.HTTP_302_FOUND)
 
 @router.post("/portal/customer/{customer_id}/delete", include_in_schema=False)
 def portal_delete_customer(request: Request, customer_id: str):

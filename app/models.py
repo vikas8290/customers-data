@@ -3,9 +3,39 @@ from typing import Optional, Any
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 import re
 
+def normalize_indian_phone(phone_input: str) -> str:
+    """
+    Normalizes Indian phone numbers to strictly format: +91XXXXXXXXXX
+    - 10 digits (e.g. 9876543210) -> +919876543210
+    - 11 digits starting with 0 (e.g. 09876543210) -> +919876543210
+    - 12 digits starting with 91 (e.g. 919876543210 or +919876543210) -> +919876543210
+    - 13 digits starting with 091 (e.g. 0919876543210) -> +919876543210
+    - Spaces, hyphens, parentheses, and dots are removed.
+    Raises ValueError if the phone number cannot be resolved to a valid 10-digit Indian number.
+    """
+    if not phone_input or not str(phone_input).strip():
+        raise ValueError("Phone number is required.")
+
+    raw = str(phone_input).strip()
+    cleaned = re.sub(r"[\s\-\(\)\.]", "", raw)
+    digits = re.sub(r"\D", "", cleaned)
+
+    if len(digits) == 10:
+        return f"+91{digits}"
+    elif len(digits) == 11 and digits.startswith("0"):
+        return f"+91{digits[1:]}"
+    elif len(digits) == 12 and digits.startswith("91"):
+        return f"+91{digits[2:]}"
+    elif len(digits) == 13 and digits.startswith("091"):
+        return f"+91{digits[3:]}"
+    else:
+        raise ValueError(
+            f"Invalid phone number '{raw}'. Indian phone numbers must be 10 digits (e.g. 9876543210) or in format +91XXXXXXXXXX (e.g. +919876543210)."
+        )
+
 class CustomerBase(BaseModel):
     # Only phone is required; all other fields are optional
-    phone: str = Field(..., description="Customer phone number (Required)")
+    phone: str = Field(..., description="Customer Indian phone number (Stored as +91XXXXXXXXXX, Unique)")
     profile: Optional[str] = Field(default=None, description="Profile URL, image link, or bio")
     name: Optional[str] = Field(default=None, description="Customer full name")
     email: Optional[str] = Field(default=None, description="Customer email address")
@@ -28,13 +58,7 @@ class CustomerBase(BaseModel):
     @field_validator("phone")
     @classmethod
     def validate_phone(cls, v: str) -> str:
-        cleaned = v.strip()
-        if not cleaned:
-            raise ValueError("Phone number cannot be empty.")
-        digits_only = re.sub(r"[^\d+]", "", cleaned)
-        if len(digits_only) < 5:
-            raise ValueError("Phone number must contain at least 5 digits.")
-        return cleaned
+        return normalize_indian_phone(v)
 
     @field_validator("email")
     @classmethod
@@ -63,6 +87,13 @@ class CustomerUpdate(BaseModel):
         populate_by_name=True,
         extra="ignore"
     )
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and str(v).strip():
+            return normalize_indian_phone(v)
+        return None
 
 class CustomerInDB(CustomerBase):
     id: str
