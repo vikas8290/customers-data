@@ -192,14 +192,15 @@
                     >
                 </div>
 
-                <!-- Source Dropdown Filter -->
-                <div class="min-w-[130px]">
+                <!-- User / Source Dropdown Filter (Shows only registered Users) -->
+                <div class="min-w-[140px]">
                     <select
                         name="source"
                         onchange="this.form.submit()"
                         class="w-full py-2 px-3 text-sm rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                        title="Filter by registered platform user"
                     >
-                        <option value="">All Sources</option>
+                        <option value="">All Users</option>
                         {% for s in unique_sources %}
                         <option value="{{ s }}" {% if source_filter == s %}selected{% endif %}>{{ s }}</option>
                         {% endfor %}
@@ -291,7 +292,7 @@
             {% endif %}
             {% if source_filter %}
             <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-semibold border border-indigo-200">
-                Source: {{ source_filter }}
+                User: {{ source_filter }}
             </span>
             {% endif %}
             {% if city_filter %}
@@ -701,16 +702,26 @@
                 </div>
             </div>
 
-            <!-- Source (From) -->
+            <!-- User / Platform Source -->
             <div>
-                <label class="block text-xs font-semibold uppercase text-slate-700 mb-1">Source / From (Optional)</label>
+                <label class="block text-xs font-semibold uppercase text-slate-700 mb-1">User / Platform (Source)</label>
+                {% if unique_sources %}
+                <select
+                    name="from_source"
+                    class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                >
+                    {% for u in unique_sources %}
+                    <option value="{{ u }}">{{ u }}</option>
+                    {% endfor %}
+                </select>
+                {% else %}
                 <input
                     type="text"
                     name="from_source"
-                    value="portal"
-                    placeholder="website, landing-page, instagram, etc."
+                    placeholder="Enter platform user name"
                     class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
+                {% endif %}
             </div>
 
             <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
@@ -842,13 +853,25 @@
             </div>
 
             <div>
-                <label class="block text-xs font-semibold uppercase text-slate-700 mb-1">Source / From</label>
+                <label class="block text-xs font-semibold uppercase text-slate-700 mb-1">User / Platform (Source)</label>
+                {% if unique_sources %}
+                <select
+                    id="edit_from_source"
+                    name="from_source"
+                    class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                >
+                    {% for u in unique_sources %}
+                    <option value="{{ u }}">{{ u }}</option>
+                    {% endfor %}
+                </select>
+                {% else %}
                 <input
                     type="text"
                     id="edit_from_source"
                     name="from_source"
                     class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
+                {% endif %}
             </div>
 
             <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
@@ -1050,7 +1073,29 @@
         document.getElementById('edit_city').value = customer.city || '';
         document.getElementById('edit_state').value = customer.state || '';
         document.getElementById('edit_pincode').value = customer.pincode || '';
-        document.getElementById('edit_from_source').value = customer.from || customer.from_source || 'website';
+        const sourceVal = customer.from || customer.from_source || '';
+        const sourceElem = document.getElementById('edit_from_source');
+        if (sourceElem) {
+            if (sourceElem.tagName === 'SELECT') {
+                let found = false;
+                for (let i = 0; i < sourceElem.options.length; i++) {
+                    if (sourceElem.options[i].value === sourceVal) {
+                        sourceElem.selectedIndex = i;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found && sourceVal) {
+                    const opt = document.createElement('option');
+                    opt.value = sourceVal;
+                    opt.textContent = sourceVal;
+                    opt.selected = true;
+                    sourceElem.appendChild(opt);
+                }
+            } else {
+                sourceElem.value = sourceVal;
+            }
+        }
 
         document.getElementById('editModal').classList.remove('hidden');
         document.getElementById('editModal').classList.add('flex');

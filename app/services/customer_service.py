@@ -2,7 +2,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional, Any
 from bson import ObjectId
 from pymongo import DESCENDING
-from app.database import get_customers_collection
+from app.database import get_customers_collection, get_users_collection
 from app.models import CustomerCreate, CustomerUpdate, CustomerInDB
 
 def doc_to_customer(doc: dict[str, Any]) -> CustomerInDB:
@@ -205,10 +205,10 @@ def get_all_customers_for_export(
     return [doc_to_customer(doc) for doc in cursor]
 
 def get_unique_sources() -> list[str]:
-    """Get list of distinct source names."""
-    col = get_customers_collection()
-    sources = col.distinct("from")
-    return sorted([str(s).strip() for s in sources if s and str(s).strip()])
+    """Get list of distinct platform user names from registered users (source filter shows only users)."""
+    users_col = get_users_collection()
+    users = users_col.distinct("username")
+    return sorted(list(set(str(u).strip() for u in users if u and str(u).strip())))
 
 def get_unique_cities() -> list[str]:
     """Get list of distinct city names."""

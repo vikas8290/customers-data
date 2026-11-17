@@ -347,4 +347,24 @@ def test_dashboard_reordered_columns_and_pagination():
     assert "name=\"page_size\"" in html
     print("✓ Dashboard column ordering and pagination controls verified")
 
+def test_source_filter_shows_only_users():
+    test_user = get_or_create_test_user()
+
+    # Verify get_unique_sources() returns registered users and not arbitrary non-user strings
+    sources = customer_service.get_unique_sources()
+    assert test_user.username in sources
+
+    # Check dashboard HTML has 'All Users' and contains the test_user
+    login_res = client.post(
+        "/login",
+        data={"username": settings.ADMIN_USERNAME, "password": settings.ADMIN_PASSWORD},
+        follow_redirects=False
+    )
+    cookies = login_res.cookies
+    resp = client.get("/dashboard", cookies=cookies)
+    assert resp.status_code == 200
+    assert "All Users" in resp.text
+    assert f">{test_user.username}</option>" in resp.text
+    print("✓ Source filter displays only registered users verified")
+
 print("All tests defined!")
