@@ -176,6 +176,91 @@ def dashboard(
         }
     )
 
+@router.get("/customers", response_class=HTMLResponse, include_in_schema=False)
+def customers_page(
+    request: Request,
+    search: Optional[str] = None,
+    source: Optional[str] = None,
+    city: Optional[str] = None,
+    state: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 20,
+    msg: Optional[str] = None,
+    error: Optional[str] = None,
+    new_user: Optional[str] = None,
+    new_key: Optional[str] = None,
+):
+    """Dedicated Customer Management Page with full table and searchable filter dropdowns."""
+    if not is_admin_authenticated(request):
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+
+    items = []
+    total = 0
+    unique_sources = []
+    unique_cities = []
+    unique_states = []
+    db_error = error
+
+    try:
+        items, total = customer_service.list_customers(
+            search=search,
+            source=source,
+            city=city,
+            state=state,
+            page=page,
+            page_size=page_size,
+        )
+        unique_sources = customer_service.get_unique_sources()
+        unique_cities = customer_service.get_unique_cities()
+        unique_states = customer_service.get_unique_states()
+    except Exception as e:
+        err_msg = str(e)
+        if "SSL handshake failed" in err_msg or "ServerSelectionTimeoutError" in err_msg or "TLSV1_ALERT" in err_msg:
+            db_error = (
+                "MongoDB Atlas Connection Blocked: Your MongoDB Atlas cluster is not allowing connections from Render's IP address. "
+                "Please go to MongoDB Atlas Dashboard -> Network Access -> Add IP Address -> Select 'Allow Access from Anywhere' (0.0.0.0/0)."
+            )
+        else:
+            db_error = f"Database error: {err_msg}"
+
+    total_pages = (total + page_size - 1) // page_size if total > 0 else 1
+
+    # Generate pagination window
+    if total_pages <= 7:
+        pagination_pages = list(range(1, total_pages + 1))
+    else:
+        if page <= 4:
+            pagination_pages = [1, 2, 3, 4, 5, "...", total_pages]
+        elif page >= total_pages - 3:
+            pagination_pages = [1, "...", total_pages - 4, total_pages - 3, total_pages - 2, total_pages - 1, total_pages]
+        else:
+            pagination_pages = [1, "...", page - 1, page, page + 1, "...", total_pages]
+
+    return templates.TemplateResponse(
+        request=request,
+        name="customers.html",
+        context={
+            "user": request.session.get("admin_user", "Admin"),
+            "customers": items,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": total_pages,
+            "pagination_pages": pagination_pages,
+            "unique_sources": unique_sources,
+            "unique_cities": unique_cities,
+            "unique_states": unique_states,
+            "search": search or "",
+            "source_filter": source or "",
+            "city_filter": city or "",
+            "state_filter": state or "",
+            "msg": msg,
+            "error": db_error,
+            "new_user": new_user,
+            "new_key": new_key,
+        }
+    )
+
 @router.post("/portal/customer/add", include_in_schema=False)
 def portal_add_customer(
     request: Request,
@@ -189,13 +274,17 @@ def portal_add_customer(
     city: Optional[str] = Form(None),
     state: Optional[str] = Form(None),
     from_source: Optional[str] = Form("portal"),
+    data: Optional[str] = Form(None),
+    redirect_to: Optional[str] = Form("/customers"),
 ):
     """Add a customer directly through the admin portal."""
     if not is_admin_authenticated(request):
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
+    dest = redirect_to or "/customers"
+    sep = "&" if "?" in dest else "?"
     try:
-        data = CustomerCreate(
+        cust_create = CustomerCreate(
             phone=phone,
             name=name or None,
             email=email or None,
@@ -205,13 +294,14 @@ def portal_add_customer(
             pincode=pincode or None,
             city=city or None,
             state=state or None,
-            from_source=from_source or "portal"
+            from_source=from_source or "portal",
+            data=data or None,
         )
-        customer_service.create_customer(data, ip_address="admin-portal")
-        return RedirectResponse(url="/dashboard?msg=added", status_code=status.HTTP_302_FOUND)
+        customer_service.create_customer(cust_create, ip_address="admin-portal")
+        return RedirectResponse(url=f"{dest}{sep}msg=added", status_code=status.HTTP_302_FOUND)
     except Exception as e:
         err_text = quote_plus(str(e))
-        return RedirectResponse(url=f"/dashboard?error={err_text}", status_code=status.HTTP_302_FOUND)
+        return RedirectResponse(url=f"{dest}{sep}error={err_text}", status_code=status.HTTP_302_FOUND)
 
 @router.post("/portal/customer/{customer_id}/edit", include_in_schema=False)
 def portal_edit_customer(
@@ -227,13 +317,17 @@ def portal_edit_customer(
     city: Optional[str] = Form(None),
     state: Optional[str] = Form(None),
     from_source: Optional[str] = Form(None),
+    data: Optional[str] = Form(None),
+    redirect_to: Optional[str] = Form("/customers"),
 ):
     """Edit customer details from the portal."""
     if not is_admin_authenticated(request):
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
+    dest = redirect_to or "/customers"
+    sep = "&" if "?" in dest else "?"
     try:
-        data = CustomerUpdate(
+        cust_update = CustomerUpdate(
             phone=phone,
             name=name,
             email=email,
@@ -244,21 +338,28 @@ def portal_edit_customer(
             city=city,
             state=state,
             from_source=from_source,
+            data=data,
         )
-        customer_service.update_customer(customer_id, data)
-        return RedirectResponse(url="/dashboard?msg=updated", status_code=status.HTTP_302_FOUND)
+        customer_service.update_customer(customer_id, cust_update)
+        return RedirectResponse(url=f"{dest}{sep}msg=updated", status_code=status.HTTP_302_FOUND)
     except Exception as e:
         err_text = quote_plus(str(e))
-        return RedirectResponse(url=f"/dashboard?error={err_text}", status_code=status.HTTP_302_FOUND)
+        return RedirectResponse(url=f"{dest}{sep}error={err_text}", status_code=status.HTTP_302_FOUND)
 
 @router.post("/portal/customer/{customer_id}/delete", include_in_schema=False)
-def portal_delete_customer(request: Request, customer_id: str):
+def portal_delete_customer(
+    request: Request,
+    customer_id: str,
+    redirect_to: Optional[str] = Form("/customers"),
+):
     """Delete customer record from the portal."""
     if not is_admin_authenticated(request):
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
+    dest = redirect_to or "/customers"
+    sep = "&" if "?" in dest else "?"
     customer_service.delete_customer(customer_id)
-    return RedirectResponse(url="/dashboard?msg=deleted", status_code=status.HTTP_302_FOUND)
+    return RedirectResponse(url=f"{dest}{sep}msg=deleted", status_code=status.HTTP_302_FOUND)
 
 # ================= ADMIN USER / PLATFORM REGISTRATION ROUTES =================
 

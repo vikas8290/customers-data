@@ -40,6 +40,7 @@ def create_customer(
         "city": data.city.strip() if data.city else None,
         "state": data.state.strip() if data.state else None,
         "from": (data.from_source.strip() if data.from_source else "website"),
+        "data": data.data if data.data else None,
         "created_at": now,
         "updated_at": now,
         "meta": {

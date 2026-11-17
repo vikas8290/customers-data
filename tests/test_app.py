@@ -367,4 +367,50 @@ def test_source_filter_shows_only_users():
     assert f">{test_user.username}</option>" in resp.text
     print("✓ Source filter displays only registered users verified")
 
+def test_customer_extra_json_data():
+    test_user = get_or_create_test_user()
+    valid_sk = settings.SECRET_KEY
+    valid_ak = test_user.api_key
+
+    random_suffix = str(int(time.time() * 100))[-8:]
+    phone_num = f"96{random_suffix}"
+    extra_json = {"order_id": 9921, "vip": True, "notes": "High value lead"}
+
+    # Create customer with extra JSON data
+    cust_res = client.post(
+        "/api/customers",
+        headers={"X-Secret-Key": valid_sk, "X-API-Key": valid_ak},
+        json={
+            "phone": phone_num,
+            "name": "JSON Data Customer",
+            "city": "Bengaluru",
+            "data": extra_json
+        }
+    )
+    assert cust_res.status_code == 201
+    created_customer = cust_res.json()["data"]
+    assert created_customer["data"] == extra_json
+    print("✓ Extra JSON data stored and retrieved via API")
+
+def test_dedicated_customers_page_and_searchable_selects():
+    login_res = client.post(
+        "/login",
+        data={"username": settings.ADMIN_USERNAME, "password": settings.ADMIN_PASSWORD},
+        follow_redirects=False
+    )
+    cookies = login_res.cookies
+
+    # Dedicated /customers page
+    resp = client.get("/customers", cookies=cookies)
+    assert resp.status_code == 200
+    html = resp.text
+
+    assert "Customer Records" in html
+    assert "searchable-select" in html
+    assert "Extra Data" in html
+    assert "All Users" in html
+    assert "All Cities" in html
+    assert "All States" in html
+    print("✓ Dedicated /customers page with searchable selects verified")
+
 print("All tests defined!")

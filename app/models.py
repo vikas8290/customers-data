@@ -49,11 +49,36 @@ class CustomerBase(BaseModel):
         alias="from",
         description="Source/Platform where data was collected. Shows user name if submitted via User API Key.",
     )
+    data: Optional[dict[str, Any]] = Field(
+        default=None,
+        description="Extra custom data stored as JSON (e.g. order details, tags, custom fields)",
+    )
 
     model_config = ConfigDict(
         populate_by_name=True,
         extra="ignore"
     )
+
+    @field_validator("data", mode="before")
+    @classmethod
+    def parse_json_data(cls, v: Any) -> Optional[dict[str, Any]]:
+        if v is None:
+            return None
+        if isinstance(v, dict):
+            return v
+        if isinstance(v, str):
+            v_str = v.strip()
+            if not v_str:
+                return None
+            try:
+                import json
+                parsed = json.loads(v_str)
+                if isinstance(parsed, dict):
+                    return parsed
+                return {"value": parsed}
+            except Exception:
+                return {"info": v_str}
+        return None
 
     @field_validator("phone")
     @classmethod
@@ -82,11 +107,33 @@ class CustomerUpdate(BaseModel):
     city: Optional[str] = None
     state: Optional[str] = None
     from_source: Optional[str] = Field(default=None, alias="from")
+    data: Optional[dict[str, Any]] = Field(default=None, description="Extra custom data stored as JSON")
 
     model_config = ConfigDict(
         populate_by_name=True,
         extra="ignore"
     )
+
+    @field_validator("data", mode="before")
+    @classmethod
+    def parse_json_data(cls, v: Any) -> Optional[dict[str, Any]]:
+        if v is None:
+            return None
+        if isinstance(v, dict):
+            return v
+        if isinstance(v, str):
+            v_str = v.strip()
+            if not v_str:
+                return None
+            try:
+                import json
+                parsed = json.loads(v_str)
+                if isinstance(parsed, dict):
+                    return parsed
+                return {"value": parsed}
+            except Exception:
+                return {"info": v_str}
+        return None
 
     @field_validator("phone")
     @classmethod

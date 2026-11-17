@@ -63,7 +63,14 @@
                     <nav class="hidden md:flex items-center gap-1.5 pl-4 border-l border-slate-200">
                         <a
                             href="/dashboard"
-                            class="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg transition {% if request.url.path == '/dashboard' %}bg-blue-50 text-blue-700 font-bold{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-50{% endif %}"
+                            class="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg transition {% if request.url.path == '/dashboard' or request.url.path == '/' %}bg-blue-50 text-blue-700 font-bold{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-50{% endif %}"
+                        >
+                            <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+                            <span>Dashboard</span>
+                        </a>
+                        <a
+                            href="/customers"
+                            class="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg transition {% if request.url.path == '/customers' %}bg-blue-50 text-blue-700 font-bold{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-50{% endif %}"
                         >
                             <i data-lucide="users" class="w-4 h-4"></i>
                             <span>Customers</span>
@@ -128,7 +135,13 @@
             <div class="md:hidden flex items-center gap-2 py-2 border-t border-slate-100 text-xs">
                 <a
                     href="/dashboard"
-                    class="flex-1 text-center py-1.5 rounded-lg font-semibold {% if request.url.path == '/dashboard' %}bg-blue-50 text-blue-700{% else %}text-slate-600{% endif %}"
+                    class="flex-1 text-center py-1.5 rounded-lg font-semibold {% if request.url.path == '/dashboard' or request.url.path == '/' %}bg-blue-50 text-blue-700{% else %}text-slate-600{% endif %}"
+                >
+                    Dashboard
+                </a>
+                <a
+                    href="/customers"
+                    class="flex-1 text-center py-1.5 rounded-lg font-semibold {% if request.url.path == '/customers' %}bg-blue-50 text-blue-700{% else %}text-slate-600{% endif %}"
                 >
                     Customers
                 </a>
@@ -352,7 +365,189 @@ curl -X POST https://your-domain.onrender.com/api/customers \
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 closeWebsiteCodeModal();
+                document.querySelectorAll(".searchable-dropdown-container > div:not(.hidden)").forEach(menu => {
+                    menu.classList.add("hidden");
+                    const chev = menu.parentElement.querySelector("button svg");
+                    if (chev) chev.parentElement.classList.remove("rotate-180");
+                });
             }
+        });
+
+        // ================= SEARCHABLE SELECT INPUTS =================
+        function initSearchableSelects(container = document) {
+            const selects = container.querySelectorAll("select.searchable-select");
+            selects.forEach(selectElem => {
+                if (selectElem.dataset.searchableInit) return;
+                selectElem.dataset.searchableInit = "true";
+                selectElem.classList.add("hidden");
+
+                const placeholder = selectElem.dataset.placeholder || (selectElem.options[0] ? selectElem.options[0].text : "Select option...");
+                const autoSubmit = selectElem.dataset.autoSubmit === "true";
+
+                // Container wrapper
+                const wrapper = document.createElement("div");
+                wrapper.className = "relative inline-block w-full searchable-dropdown-container text-xs";
+
+                // Trigger Button
+                const trigger = document.createElement("button");
+                trigger.type = "button";
+                trigger.className = "w-full py-2 px-3 text-sm rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-slate-800 flex items-center justify-between gap-2 transition focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm cursor-pointer";
+
+                const labelSpan = document.createElement("span");
+                labelSpan.className = "truncate text-left font-medium";
+
+                const currentOpt = selectElem.options[selectElem.selectedIndex];
+                if (currentOpt && currentOpt.value) {
+                    labelSpan.textContent = currentOpt.text;
+                    labelSpan.className = "truncate text-left font-semibold text-slate-800";
+                } else {
+                    labelSpan.textContent = placeholder;
+                    labelSpan.className = "truncate text-left text-slate-500";
+                }
+
+                const chevron = document.createElement("span");
+                chevron.className = "text-slate-400 shrink-0 pointer-events-none transition-transform duration-200";
+                chevron.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>`;
+
+                trigger.appendChild(labelSpan);
+                trigger.appendChild(chevron);
+                wrapper.appendChild(trigger);
+
+                // Dropdown Menu Panel
+                const menu = document.createElement("div");
+                menu.className = "hidden absolute left-0 top-full mt-1.5 w-full min-w-[210px] max-w-sm bg-white rounded-xl shadow-2xl border border-slate-200 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150";
+
+                // Search Box with Icon
+                const searchBox = document.createElement("div");
+                searchBox.className = "p-2 border-b border-slate-100 bg-slate-50/90 sticky top-0 flex items-center gap-1.5";
+                searchBox.innerHTML = `
+                    <svg class="w-3.5 h-3.5 text-slate-400 shrink-0 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    <input type="text" placeholder="Search..." class="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                `;
+                const searchInput = searchBox.querySelector("input");
+                menu.appendChild(searchBox);
+
+                // Scrollable Options List
+                const list = document.createElement("div");
+                list.className = "max-h-56 overflow-y-auto p-1 text-xs space-y-0.5";
+
+                Array.from(selectElem.options).forEach((opt, idx) => {
+                    const item = document.createElement("div");
+                    item.className = "px-2.5 py-2 rounded-lg cursor-pointer flex items-center justify-between text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition";
+                    item.dataset.value = opt.value;
+                    item.dataset.text = opt.text.toLowerCase();
+
+                    const itemText = document.createElement("span");
+                    itemText.textContent = opt.text;
+                    itemText.className = opt.value === "" ? "font-semibold text-slate-500" : "font-medium";
+                    item.appendChild(itemText);
+
+                    if (opt.selected) {
+                        item.className += " bg-blue-50 text-blue-700 font-bold";
+                        const check = document.createElement("span");
+                        check.innerHTML = `<svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+                        item.appendChild(check);
+                    }
+
+                    item.addEventListener("click", () => {
+                        selectElem.selectedIndex = idx;
+                        labelSpan.textContent = opt.value ? opt.text : placeholder;
+                        labelSpan.className = opt.value ? "truncate text-left font-semibold text-slate-800" : "truncate text-left text-slate-500";
+
+                        // Update check indicators
+                        Array.from(list.children).forEach(ch => {
+                            ch.classList.remove("bg-blue-50", "text-blue-700", "font-bold");
+                            const svg = ch.querySelector("svg");
+                            if (svg && ch !== item) svg.parentElement.remove();
+                        });
+                        item.className += " bg-blue-50 text-blue-700 font-bold";
+
+                        menu.classList.add("hidden");
+                        chevron.classList.remove("rotate-180");
+                        searchInput.value = "";
+                        filterItems("");
+
+                        // Fire native change event
+                        const event = new Event("change", { bubbles: true });
+                        selectElem.dispatchEvent(event);
+
+                        if (autoSubmit && selectElem.form) {
+                            selectElem.form.submit();
+                        }
+                    });
+
+                    list.appendChild(item);
+                });
+
+                const noResult = document.createElement("div");
+                noResult.className = "hidden px-3 py-3 text-center text-slate-400 italic text-[11px]";
+                noResult.textContent = "No matching options found";
+                list.appendChild(noResult);
+
+                menu.appendChild(list);
+                wrapper.appendChild(menu);
+
+                selectElem.parentNode.insertBefore(wrapper, selectElem);
+
+                trigger.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    document.querySelectorAll(".searchable-dropdown-container > div:not(.hidden)").forEach(other => {
+                        if (other !== menu) {
+                            other.classList.add("hidden");
+                            const oChev = other.parentElement.querySelector("button svg");
+                            if (oChev) oChev.parentElement.classList.remove("rotate-180");
+                        }
+                    });
+
+                    const isHidden = menu.classList.contains("hidden");
+                    if (isHidden) {
+                        menu.classList.remove("hidden");
+                        chevron.classList.add("rotate-180");
+                        searchInput.value = "";
+                        filterItems("");
+                        setTimeout(() => searchInput.focus(), 60);
+                    } else {
+                        menu.classList.add("hidden");
+                        chevron.classList.remove("rotate-180");
+                    }
+                });
+
+                function filterItems(query) {
+                    const q = query.toLowerCase().trim();
+                    let count = 0;
+                    Array.from(list.children).forEach(it => {
+                        if (it === noResult) return;
+                        const txt = it.dataset.text || "";
+                        if (!q || txt.includes(q)) {
+                            it.style.display = "";
+                            count++;
+                        } else {
+                            it.style.display = "none";
+                        }
+                    });
+                    noResult.classList.toggle("hidden", count > 0);
+                }
+
+                searchInput.addEventListener("input", (e) => {
+                    filterItems(e.target.value);
+                });
+
+                menu.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                });
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            initSearchableSelects();
+        });
+
+        document.addEventListener("click", () => {
+            document.querySelectorAll(".searchable-dropdown-container > div:not(.hidden)").forEach(menu => {
+                menu.classList.add("hidden");
+                const chev = menu.parentElement.querySelector("button svg");
+                if (chev) chev.parentElement.classList.remove("rotate-180");
+            });
         });
     </script>
     {% block scripts %}{% endblock %}
