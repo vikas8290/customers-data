@@ -125,6 +125,9 @@ class DashboardStats(BaseModel):
     this_month_count: int
     sources_breakdown: dict[str, int]
     top_cities: list[dict[str, Any]]
+    top_states: Optional[list[dict[str, Any]]] = Field(default_factory=list)
+    chart_daily_labels: Optional[list[str]] = Field(default_factory=list)
+    chart_daily_values: Optional[list[int]] = Field(default_factory=list)
 
 # ================= USER / API KEY MODELS =================
 

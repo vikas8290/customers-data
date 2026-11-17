@@ -67,6 +67,7 @@ def dashboard(
     search: Optional[str] = None,
     source: Optional[str] = None,
     city: Optional[str] = None,
+    state: Optional[str] = None,
     page: int = 1,
     page_size: int = 20,
     msg: Optional[str] = None,
@@ -87,8 +88,13 @@ def dashboard(
         "this_month_count": 0,
         "sources_breakdown": {},
         "top_cities": [],
+        "top_states": [],
+        "chart_daily_labels": [],
+        "chart_daily_values": [],
     }
     unique_sources = []
+    unique_cities = []
+    unique_states = []
     users = []
 
     try:
@@ -96,11 +102,14 @@ def dashboard(
             search=search,
             source=source,
             city=city,
+            state=state,
             page=page,
             page_size=page_size,
         )
         stats = customer_service.get_dashboard_stats()
         unique_sources = customer_service.get_unique_sources()
+        unique_cities = customer_service.get_unique_cities()
+        unique_states = customer_service.get_unique_states()
         users = user_service.list_users()
     except Exception as e:
         err_msg = str(e)
@@ -126,10 +135,13 @@ def dashboard(
             "total_pages": total_pages,
             "stats": stats,
             "unique_sources": unique_sources,
+            "unique_cities": unique_cities,
+            "unique_states": unique_states,
             "users": users,
             "search": search or "",
             "source_filter": source or "",
             "city_filter": city or "",
+            "state_filter": state or "",
             "msg": msg,
             "error": db_error,
             "new_user": new_user,

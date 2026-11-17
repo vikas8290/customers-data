@@ -208,10 +208,22 @@ def get_unique_sources() -> list[str]:
     """Get list of distinct source names."""
     col = get_customers_collection()
     sources = col.distinct("from")
-    return [s for s in sources if s]
+    return sorted([str(s).strip() for s in sources if s and str(s).strip()])
+
+def get_unique_cities() -> list[str]:
+    """Get list of distinct city names."""
+    col = get_customers_collection()
+    cities = col.distinct("city")
+    return sorted([str(c).strip() for c in cities if c and str(c).strip()])
+
+def get_unique_states() -> list[str]:
+    """Get list of distinct state names."""
+    col = get_customers_collection()
+    states = col.distinct("state")
+    return sorted([str(s).strip() for s in states if s and str(s).strip()])
 
 def get_dashboard_stats() -> dict[str, Any]:
-    """Compute dashboard analytics and metrics."""
+    """Compute dashboard analytics, metrics, and graph data."""
     col = get_customers_collection()
     now = datetime.now(timezone.utc)
     
@@ -224,7 +236,7 @@ def get_dashboard_stats() -> dict[str, Any]:
     week_count = col.count_documents({"created_at": {"$gte": week_start}})
     month_count = col.count_documents({"created_at": {"$gte": month_start}})
     
-    # Sources breakdown
+    # 1. Sources breakdown
     sources_pipeline = [
         {"$group": {"_id": {"$ifNull": ["$from", "website"]}, "count": {"$sum": 1}}},
         {"$sort": {"count": -1}},
@@ -234,17 +246,55 @@ def get_dashboard_stats() -> dict[str, Any]:
         item["_id"]: item["count"] for item in col.aggregate(sources_pipeline)
     }
     
-    # Top cities
+    # 2. Top cities
     cities_pipeline = [
         {"$match": {"city": {"$ne": None, "$ne": ""}}},
         {"$group": {"_id": "$city", "count": {"$sum": 1}}},
         {"$sort": {"count": -1}},
-        {"$limit": 5}
+        {"$limit": 7}
     ]
     top_cities = [
         {"city": item["_id"], "count": item["count"]}
         for item in col.aggregate(cities_pipeline)
     ]
+
+    # 3. Top states
+    states_pipeline = [
+        {"$match": {"state": {"$ne": None, "$ne": ""}}},
+        {"$group": {"_id": "$state", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": 7}
+    ]
+    top_states = [
+        {"state": item["_id"], "count": item["count"]}
+        for item in col.aggregate(states_pipeline)
+    ]
+
+    # 4. Daily Leads Graph Trend (Last 7 Days)
+    days_map = {}
+    for i in range(6, -1, -1):
+        day_date = (now - timedelta(days=i)).strftime("%Y-%m-%d")
+        days_map[day_date] = 0
+
+    daily_pipeline = [
+        {"$match": {"created_at": {"$gte": now - timedelta(days=7)}}},
+        {
+            "$group": {
+                "_id": {"$dateToString": {"format": "%Y-%m-%d", "date": "$created_at"}},
+                "count": {"$sum": 1}
+            }
+        }
+    ]
+    try:
+        for row in col.aggregate(daily_pipeline):
+            d_key = row["_id"]
+            if d_key in days_map:
+                days_map[d_key] = row["count"]
+    except Exception:
+        pass
+
+    chart_daily_labels = [datetime.strptime(d, "%Y-%m-%d").strftime("%d %b") for d in days_map.keys()]
+    chart_daily_values = list(days_map.values())
     
     return {
         "total_customers": total,
@@ -253,4 +303,7 @@ def get_dashboard_stats() -> dict[str, Any]:
         "this_month_count": month_count,
         "sources_breakdown": sources_breakdown,
         "top_cities": top_cities,
+        "top_states": top_states,
+        "chart_daily_labels": chart_daily_labels,
+        "chart_daily_values": chart_daily_values,
     }

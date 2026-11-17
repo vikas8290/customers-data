@@ -210,4 +210,50 @@ def test_login_flow_and_dashboard():
     assert "Register New Platform / User" in users_auth.text
     print("✓ Dedicated /users page loads successfully with 200 OK")
 
+def test_dashboard_charts_and_city_state_filters():
+    # 1. Verify dashboard stats have chart data
+    stats = customer_service.get_dashboard_stats()
+    assert "chart_daily_labels" in stats
+    assert "chart_daily_values" in stats
+    assert len(stats["chart_daily_labels"]) == 7
+    assert len(stats["chart_daily_values"]) == 7
+
+    test_user = get_or_create_test_user()
+    valid_sk = settings.SECRET_KEY
+    valid_ak = test_user.api_key
+
+    # 2. Add customer with specific city & state
+    random_suffix = str(int(time.time() * 100))[-8:]
+    phone_num = f"97{random_suffix}"
+    cust_res = client.post(
+        "/api/customers",
+        headers={"X-Secret-Key": valid_sk, "X-API-Key": valid_ak},
+        json={
+            "phone": phone_num,
+            "name": "Chart Test Customer",
+            "city": "Jodhpur",
+            "state": "Rajasthan"
+        }
+    )
+    assert cust_res.status_code == 201
+
+    # 3. Test city and state filters in customer list API
+    list_res = client.get(
+        "/api/customers?city=Jodhpur&state=Rajasthan",
+        headers={"X-Secret-Key": valid_sk, "X-API-Key": valid_ak}
+    )
+    assert list_res.status_code == 200
+    list_data = list_res.json()
+    assert list_data["total"] >= 1
+    assert any(c["city"] == "Jodhpur" for c in list_data["items"])
+
+    # 4. Test API Excel export with city and state filters
+    api_excel_res = client.get(
+        "/api/customers/export/excel?city=Jodhpur&state=Rajasthan",
+        headers={"X-Secret-Key": valid_sk, "X-API-Key": valid_ak}
+    )
+    assert api_excel_res.status_code == 200
+    assert "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" in api_excel_res.headers["content-type"]
+    print("✓ API Excel export according to filters passed successfully")
+
 print("All tests defined!")

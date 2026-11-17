@@ -1,6 +1,7 @@
 from typing import Optional
 from datetime import datetime
 from fastapi import APIRouter, Request, HTTPException, status, Query, Depends
+from fastapi.responses import StreamingResponse
 from app.models import (
     CustomerCreate,
     CustomerUpdate,
@@ -12,7 +13,7 @@ from app.models import (
     UserResponse,
     UserListResponse,
 )
-from app.services import customer_service, user_service
+from app.services import customer_service, user_service, excel_service
 from app.database import db_manager
 from app.auth import (
     verify_customer_api_access,
@@ -172,6 +173,37 @@ def get_customers(
         page_size=page_size,
         total_pages=total_pages,
         items=items
+    )
+
+@router.get(
+    "/customers/export/excel",
+    dependencies=[Depends(verify_api_both_keys)],
+    summary="Download Filtered Customers in Excel File (Requires BOTH SECRET_KEY & User API Key)",
+    description="Export customer records to an Excel (.xlsx) spreadsheet matching search, source, city, and state filters."
+)
+def api_export_customers_excel(
+    search: Optional[str] = Query(None, description="Search term across name, phone, email, city, address"),
+    source: Optional[str] = Query(None, alias="from", description="Filter by platform / user source"),
+    city: Optional[str] = Query(None, description="Filter by city"),
+    state: Optional[str] = Query(None, description="Filter by state"),
+):
+    """Generates and streams an Excel spreadsheet of filtered customers."""
+    customers = customer_service.get_all_customers_for_export(
+        search=search,
+        source=source,
+        city=city,
+        state=state,
+    )
+    buffer = excel_service.generate_customers_excel(customers)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"customers_export_{timestamp}.xlsx"
+
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        }
     )
 
 @router.get(
