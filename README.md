@@ -112,7 +112,7 @@ COLLECTION_NAME=customers
 
 # Admin Portal Login
 ADMIN_USERNAME=admin
-ADMIN_PASSWORD=admin123
+ADMIN_PASSWORD=your_secure_password
 
 # CORS
 CORS_ORIGINS=*
@@ -124,7 +124,7 @@ uvicorn app.main:app --reload --port 8000
 ```
 
 Open your browser:
-- **Admin Portal**: [http://localhost:8000/login](http://localhost:8000/login) (Credentials: `admin` / `admin123`)
+- **Admin Portal**: [http://localhost:8000/login](http://localhost:8000/login) (Sign in with credentials set in your `.env`)
 - **Interactive API Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
 - **Health Check**: [http://localhost:8000/api/health](http://localhost:8000/api/health)
 

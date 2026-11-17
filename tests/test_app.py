@@ -75,6 +75,11 @@ def test_get_customers_api():
     assert len(data["items"]) >= 1
 
 def test_login_flow_and_dashboard():
+    # Ensure credentials exist for test
+    if not settings.ADMIN_PASSWORD:
+        settings.ADMIN_PASSWORD = "testpassword123"
+        settings.ADMIN_USERNAME = "admin"
+
     # 1. Access dashboard without login -> redirects to login
     dash_resp = client.get("/dashboard", follow_redirects=False)
     assert dash_resp.status_code == 302

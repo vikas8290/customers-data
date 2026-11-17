@@ -4,6 +4,8 @@ from app.config import settings
 
 def authenticate_admin(username: str, password: str) -> bool:
     """Validate username and password against configured admin credentials."""
+    if not settings.ADMIN_USERNAME or not settings.ADMIN_PASSWORD:
+        return False
     return (
         username.strip() == settings.ADMIN_USERNAME
         and password.strip() == settings.ADMIN_PASSWORD

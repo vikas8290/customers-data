@@ -21,7 +21,7 @@ class Settings:
     
     # Admin Portal Credentials
     ADMIN_USERNAME: str = os.getenv("ADMIN_USERNAME", "admin")
-    ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "admin123")
+    ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "")
     
     # CORS
     CORS_ORIGINS: list[str] = [
