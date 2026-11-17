@@ -449,4 +449,56 @@ def test_profile_not_available_null_sent():
     assert res3.json()["data"]["profile"] is None
     print("✓ Profile image not available verified to strictly return null")
 
+def test_connect_website_modal_with_languages_and_data_column():
+    login_resp = client.post(
+        "/login",
+        data={"username": settings.ADMIN_USERNAME, "password": settings.ADMIN_PASSWORD},
+        follow_redirects=False,
+    )
+    cookies = login_resp.cookies
+
+    # Fetch dashboard which inherits base.html with the websiteModal
+    dash_resp = client.get("/dashboard", cookies=cookies)
+    assert dash_resp.status_code == 200
+    html = dash_resp.text
+
+    # 1. Verify Connect Website button & modal container
+    assert "Connect Website" in html
+    assert 'id="websiteModal"' in html
+    assert "Connect Website / API Integration" in html
+
+    # 2. Verify all requested language tabs are present
+    assert "PHP" in html
+    assert "Python" in html
+    assert "Terminal (cURL)" in html
+    assert "Node.js" in html
+    assert "JavaScript (Browser)" in html
+    assert "Other (HTML / Webhooks)" in html
+
+    # 3. Verify code pane IDs
+    assert 'id="pane-php"' in html
+    assert 'id="pane-python"' in html
+    assert 'id="pane-terminal"' in html
+    assert 'id="pane-node"' in html
+    assert 'id="pane-javascript"' in html
+    assert 'id="pane-other"' in html
+
+    # 4. Verify new column 'data' is documented and included in snippets
+    assert "New Column: Extra JSON Data" in html
+    assert "'data'     => [" in html      # PHP syntax
+    assert '"data": {' in html            # Python / Terminal / Node / JS JSON syntax
+    assert "switchConnectTab" in html
+
+    # 5. Verify /docs API documentation has data column and integration types
+    docs_resp = client.get("/openapi.json")
+    assert docs_resp.status_code == 200
+    docs_json = docs_resp.json()
+    description = docs_json.get("info", {}).get("description", "")
+    assert "Extra Data Column (`data`)" in description
+    assert "PHP" in description
+    assert "Python" in description
+    assert "Terminal / CLI" in description
+    assert "Node.js" in description
+    print("✓ Connect Website modal with PHP, Python, Terminal, Node, JS, Other & data column verified")
+
 print("All tests defined!")

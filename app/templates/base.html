@@ -171,15 +171,15 @@
     <!-- Global Website Integration Code Modal (Accessible from any page via Header) -->
     {% if request.session.get("admin_logged_in") %}
     <div id="websiteModal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
-            <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+        <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-200">
+            <div class="p-5 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur z-10">
                 <div class="flex items-center gap-2.5">
                     <div class="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
                         <i data-lucide="code-2" class="w-5 h-5"></i>
                     </div>
                     <div>
                         <h3 class="text-base font-bold text-slate-900">Connect Website / API Integration</h3>
-                        <p class="text-xs text-slate-500">Collect customer leads directly from any website, landing page, or frontend form</p>
+                        <p class="text-xs text-slate-500">Collect customer leads directly from any website, landing page, backend service or terminal</p>
                     </div>
                 </div>
                 <button onclick="closeWebsiteCodeModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition">
@@ -203,60 +203,196 @@
                     </div>
                 </div>
 
-                <!-- API Endpoint -->
-                <div>
-                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">API Endpoint (CORS Enabled)</p>
-                    <div class="flex items-center gap-2 bg-slate-900 text-emerald-400 font-mono text-xs p-3.5 rounded-xl">
-                        <span class="text-blue-400 font-bold">POST</span>
-                        <span id="apiEndpointUrl" class="font-mono text-slate-200">https://your-domain.onrender.com/api/customers</span>
+                <!-- API Endpoint & Data Column Callout -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">API Endpoint (CORS Enabled)</p>
+                        <div class="flex items-center gap-2 bg-slate-900 text-emerald-400 font-mono text-xs p-3.5 rounded-xl border border-slate-800">
+                            <span class="text-blue-400 font-bold">POST</span>
+                            <span id="apiEndpointUrl" class="font-mono text-slate-200 truncate">https://your-domain.onrender.com/api/customers</span>
+                        </div>
+                        <p class="text-[11px] text-slate-500 mt-1.5">Only <span class="font-semibold text-slate-700">phone</span> is required (Indian 10-digit or +91 format, stored as <code class="font-mono text-indigo-600 bg-indigo-50 px-1 py-0.5 rounded font-bold">+91XXXXXXXXXX</code>, unique).</p>
                     </div>
-                    <p class="text-[11px] text-slate-500 mt-1.5">Only <span class="font-semibold text-slate-700">phone</span> is strictly required (Indian 10-digit or +91 format, stored as <code class="font-mono text-indigo-600 bg-indigo-50 px-1 py-0.5 rounded font-bold">+91XXXXXXXXXX</code>, unique). Other fields are optional.</p>
+
+                    <div class="bg-indigo-50/70 border border-indigo-200 rounded-xl p-3.5">
+                        <div class="flex items-center gap-1.5 mb-1 text-xs font-bold text-indigo-950">
+                            <i data-lucide="layers" class="w-4 h-4 text-indigo-600"></i>
+                            <span>New Column: Extra JSON Data (<code class="font-mono bg-indigo-100 px-1 py-0.5 rounded">data</code>)</span>
+                        </div>
+                        <p class="text-[11px] text-indigo-800 leading-relaxed">
+                            Send any custom fields as a JSON object inside <code class="font-mono font-semibold bg-white/80 px-1 py-0.5 rounded border border-indigo-200">data</code> (e.g. <code class="font-mono">{"plan": "Gold", "lead_score": 95, "budget": 50000}</code>). Stored in MongoDB, visible in Customer Directory, and exported in Excel.
+                        </p>
+                    </div>
                 </div>
 
-                <!-- JavaScript Fetch Example -->
-                <div>
-                    <div class="flex items-center justify-between mb-1.5">
-                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">JavaScript / Frontend Website Code</p>
-                        <button onclick="copyModalCode('jsFetchCode', this)" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1">
-                            <i data-lucide="copy" class="w-3.5 h-3.5"></i> <span>Copy Code</span>
-                        </button>
+                <!-- Fields Reference Table -->
+                <div class="border border-slate-200 rounded-xl overflow-hidden bg-slate-50/50">
+                    <div class="px-4 py-2 bg-slate-100 border-b border-slate-200 text-xs font-bold text-slate-700 flex items-center justify-between">
+                        <span>Payload Parameters Reference</span>
+                        <span class="text-[11px] font-normal text-slate-500">Content-Type: application/json</span>
                     </div>
-                    <pre id="jsFetchCode" class="bg-slate-900 text-slate-100 font-mono text-xs p-4 rounded-xl overflow-x-auto leading-relaxed">
-// Collect customer lead from website/app
-async function submitCustomerLead() {
-  const response = await fetch('/api/customers', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Secret-Key': 'YOUR_SECRET_KEY',   // Master SECRET_KEY (REQUIRED)
-      'X-API-Key': 'YOUR_USER_API_KEY'     // User/Platform API Key (REQUIRED)
-    },
-    body: JSON.stringify({
-      phone: "9876543210", // REQUIRED: 10-digit or +919876543210 (stored as +91XXXXXXXXXX, must be unique)
-      name: "Rohan Sharma",    // optional
-      email: "rohan@example.com", // optional
-      address: "123 Green Park",  // optional
-      landmark: "Near Metro",     // optional
-      city: "Jaipur",             // optional
-      state: "Rajasthan",         // optional
-      pincode: "302001",          // optional
-      profile: "Interested in service" // optional
-    })
-  });
-  const data = await response.json();
-  console.log('Lead submitted:', data);
-}</pre>
+                    <div class="p-3 text-xs divide-y divide-slate-200/60 font-mono">
+                        <div class="py-1.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-slate-700">
+                            <span><strong class="text-rose-600">phone</strong> <span class="text-slate-400 font-sans">(required, string)</span></span>
+                            <span class="text-slate-500 font-sans text-[11px]">10 digits or +91XXXXXXXXXX (normalized & unique)</span>
+                        </div>
+                        <div class="py-1.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-slate-700">
+                            <span><strong class="text-indigo-600">data</strong> <span class="text-slate-400 font-sans">(optional, json object)</span></span>
+                            <span class="text-slate-500 font-sans text-[11px]">Extra custom data (e.g. {"plan": "Pro", "score": 95})</span>
+                        </div>
+                        <div class="py-1.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-slate-700">
+                            <span><strong>profile</strong> <span class="text-slate-400 font-sans">(optional, string/null)</span></span>
+                            <span class="text-slate-500 font-sans text-[11px]">Image URL (http...) or null if not available</span>
+                        </div>
+                        <div class="py-1.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-slate-700">
+                            <span><strong>name, email, city, state</strong> <span class="text-slate-400 font-sans">(optional, string)</span></span>
+                            <span class="text-slate-500 font-sans text-[11px]">Personal & geographical identity</span>
+                        </div>
+                        <div class="py-1.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-slate-700">
+                            <span><strong>address, landmark, pincode</strong> <span class="text-slate-400 font-sans">(optional, string)</span></span>
+                            <span class="text-slate-500 font-sans text-[11px]">Address & postal pincode details</span>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- cURL Example -->
+                <!-- Integration Code Tabs (PHP, Python, Terminal, Node.js, JavaScript, Other) -->
                 <div>
-                    <div class="flex items-center justify-between mb-1.5">
-                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">cURL Terminal Command</p>
-                        <button onclick="copyModalCode('curlCmdCode', this)" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1">
-                            <i data-lucide="copy" class="w-3.5 h-3.5"></i> <span>Copy cURL</span>
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Choose Integration Language / Platform</p>
+                    </div>
+
+                    <!-- Tab Buttons -->
+                    <div class="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl overflow-x-auto border border-slate-200 mb-3">
+                        <button type="button" onclick="switchConnectTab('php')" id="tabBtn-php" class="connect-tab-btn px-3 py-1.5 text-xs font-semibold rounded-lg transition whitespace-nowrap bg-indigo-600 text-white shadow-sm">
+                            PHP
+                        </button>
+                        <button type="button" onclick="switchConnectTab('python')" id="tabBtn-python" class="connect-tab-btn px-3 py-1.5 text-xs font-semibold rounded-lg transition whitespace-nowrap text-slate-600 hover:text-slate-900 hover:bg-slate-200">
+                            Python
+                        </button>
+                        <button type="button" onclick="switchConnectTab('terminal')" id="tabBtn-terminal" class="connect-tab-btn px-3 py-1.5 text-xs font-semibold rounded-lg transition whitespace-nowrap text-slate-600 hover:text-slate-900 hover:bg-slate-200">
+                            Terminal (cURL)
+                        </button>
+                        <button type="button" onclick="switchConnectTab('node')" id="tabBtn-node" class="connect-tab-btn px-3 py-1.5 text-xs font-semibold rounded-lg transition whitespace-nowrap text-slate-600 hover:text-slate-900 hover:bg-slate-200">
+                            Node.js
+                        </button>
+                        <button type="button" onclick="switchConnectTab('javascript')" id="tabBtn-javascript" class="connect-tab-btn px-3 py-1.5 text-xs font-semibold rounded-lg transition whitespace-nowrap text-slate-600 hover:text-slate-900 hover:bg-slate-200">
+                            JavaScript (Browser)
+                        </button>
+                        <button type="button" onclick="switchConnectTab('other')" id="tabBtn-other" class="connect-tab-btn px-3 py-1.5 text-xs font-semibold rounded-lg transition whitespace-nowrap text-slate-600 hover:text-slate-900 hover:bg-slate-200">
+                            Other (HTML / Webhooks)
                         </button>
                     </div>
-                    <pre id="curlCmdCode" class="bg-slate-900 text-slate-100 font-mono text-xs p-4 rounded-xl overflow-x-auto leading-relaxed">
+
+                    <!-- Tab 1: PHP -->
+                    <div id="pane-php" class="connect-tab-pane">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span class="text-xs text-slate-500 font-medium">PHP (cURL Request with Extra JSON Data)</span>
+                            <button onclick="copyModalCode('code-php', this)" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1 cursor-pointer">
+                                <i data-lucide="copy" class="w-3.5 h-3.5"></i> <span>Copy PHP Code</span>
+                            </button>
+                        </div>
+                        <pre id="code-php" class="modal-code-snippet bg-slate-900 text-slate-100 font-mono text-xs p-4 rounded-xl overflow-x-auto leading-relaxed border border-slate-800">&lt;?php
+// PHP Customer Lead Submission to Customer Data API
+$apiUrl = 'https://your-domain.onrender.com/api/customers';
+
+// Dual Authentication Keys
+$secretKey = 'YOUR_SECRET_KEY';   // Master SECRET_KEY (REQUIRED)
+$apiKey    = 'YOUR_USER_API_KEY'; // User API Key from Users & Keys page (REQUIRED)
+
+// Customer Data Payload with Extra JSON 'data' Column
+$payload = [
+    'phone'    => '9876543210',        // REQUIRED: 10-digit Indian phone or +919876543210
+    'name'     => 'Aarav Sharma',      // optional
+    'email'    => 'aarav@example.com', // optional
+    'city'     => 'Jaipur',            // optional
+    'state'    => 'Rajasthan',         // optional
+    'pincode'  => '302001',            // optional
+    'profile'  => null,                // optional (Avatar image URL or null)
+    // Extra custom attributes stored in 'data' column as JSON
+    'data'     => [
+        'plan'          => 'Enterprise',
+        'campaign'      => 'Google_Ads',
+        'budget'        => 50000,
+        'lead_score'    => 95,
+        'interest'      => 'Web Development'
+    ]
+];
+
+$ch = curl_init($apiUrl);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Content-Type: application/json',
+    'X-Secret-Key: ' . $secretKey,
+    'X-API-Key: ' . $apiKey
+]);
+
+$response = curl_exec($ch);
+$httpStatus = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+if (curl_errno($ch)) {
+    echo 'cURL Error: ' . curl_error($ch);
+} else {
+    $result = json_decode($response, true);
+    echo "HTTP Status: $httpStatus\n";
+    print_r($result);
+}
+curl_close($ch);
+?&gt;</pre>
+                    </div>
+
+                    <!-- Tab 2: Python -->
+                    <div id="pane-python" class="connect-tab-pane hidden">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span class="text-xs text-slate-500 font-medium">Python (requests library with Extra JSON Data)</span>
+                            <button onclick="copyModalCode('code-python', this)" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1 cursor-pointer">
+                                <i data-lucide="copy" class="w-3.5 h-3.5"></i> <span>Copy Python Code</span>
+                            </button>
+                        </div>
+                        <pre id="code-python" class="modal-code-snippet bg-slate-900 text-slate-100 font-mono text-xs p-4 rounded-xl overflow-x-auto leading-relaxed border border-slate-800">import requests
+
+# Python Customer Lead Submission
+API_URL = "https://your-domain.onrender.com/api/customers"
+
+HEADERS = {
+    "Content-Type": "application/json",
+    "X-Secret-Key": "YOUR_SECRET_KEY",    # Master SECRET_KEY (REQUIRED)
+    "X-API-Key": "YOUR_USER_API_KEY"      # User API Key (REQUIRED)
+}
+
+payload = {
+    "phone": "9876543210",               # REQUIRED: 10-digit or +919876543210 (unique)
+    "name": "Aarav Sharma",             # optional
+    "email": "aarav@example.com",        # optional
+    "city": "Jaipur",                   # optional
+    "state": "Rajasthan",                # optional
+    "pincode": "302001",                 # optional
+    "profile": None,                     # optional (Avatar URL or null/None)
+    # Extra custom attributes stored in 'data' column as JSON
+    "data": {
+        "plan": "Enterprise",
+        "campaign": "Google_Ads",
+        "budget": 50000,
+        "lead_score": 95,
+        "interest": "Web Development"
+    }
+}
+
+response = requests.post(API_URL, headers=HEADERS, json=payload)
+print(f"Status Code: {response.status_code}")
+print("Response JSON:", response.json())</pre>
+                    </div>
+
+                    <!-- Tab 3: Terminal (cURL) -->
+                    <div id="pane-terminal" class="connect-tab-pane hidden">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span class="text-xs text-slate-500 font-medium">Terminal / Bash cURL Command</span>
+                            <button onclick="copyModalCode('code-terminal', this)" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1 cursor-pointer">
+                                <i data-lucide="copy" class="w-3.5 h-3.5"></i> <span>Copy cURL</span>
+                            </button>
+                        </div>
+                        <pre id="code-terminal" class="modal-code-snippet bg-slate-900 text-slate-100 font-mono text-xs p-4 rounded-xl overflow-x-auto leading-relaxed border border-slate-800"># Terminal / cURL Customer Submission
 curl -X POST https://your-domain.onrender.com/api/customers \
   -H "Content-Type: application/json" \
   -H "X-Secret-Key: YOUR_SECRET_KEY" \
@@ -264,12 +400,172 @@ curl -X POST https://your-domain.onrender.com/api/customers \
   -d '{
     "phone": "9876543210",
     "name": "Aarav Sharma",
-    "city": "Mumbai"
+    "email": "aarav@example.com",
+    "city": "Jaipur",
+    "state": "Rajasthan",
+    "pincode": "302001",
+    "profile": null,
+    "data": {
+      "plan": "Enterprise",
+      "campaign": "Google_Ads",
+      "budget": 50000,
+      "lead_score": 95,
+      "interest": "Web Development"
+    }
   }'</pre>
+                    </div>
+
+                    <!-- Tab 4: Node.js -->
+                    <div id="pane-node" class="connect-tab-pane hidden">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span class="text-xs text-slate-500 font-medium">Node.js (Fetch / Axios with Extra JSON Data)</span>
+                            <button onclick="copyModalCode('code-node', this)" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1 cursor-pointer">
+                                <i data-lucide="copy" class="w-3.5 h-3.5"></i> <span>Copy Node.js Code</span>
+                            </button>
+                        </div>
+                        <pre id="code-node" class="modal-code-snippet bg-slate-900 text-slate-100 font-mono text-xs p-4 rounded-xl overflow-x-auto leading-relaxed border border-slate-800">// Node.js Customer Lead Submission (Node 18+ native fetch or Axios)
+const API_URL = 'https://your-domain.onrender.com/api/customers';
+
+const payload = {
+  phone: '9876543210',               // REQUIRED: 10-digit or +919876543210
+  name: 'Aarav Sharma',              // optional
+  email: 'aarav@example.com',        // optional
+  city: 'Jaipur',                    // optional
+  state: 'Rajasthan',                // optional
+  pincode: '302001',                 // optional
+  profile: null,                     // optional (Avatar URL or null)
+  // Extra custom attributes stored in 'data' column as JSON
+  data: {
+    plan: 'Enterprise',
+    campaign: 'Google_Ads',
+    budget: 50000,
+    lead_score: 95,
+    interest: 'Web Development'
+  }
+};
+
+async function sendLead() {
+  try {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Secret-Key': 'YOUR_SECRET_KEY',   // Master SECRET_KEY (REQUIRED)
+        'X-API-Key': 'YOUR_USER_API_KEY'     // User API Key (REQUIRED)
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await response.json();
+    console.log(`Status: ${response.status}`);
+    console.log('Result:', result);
+  } catch (error) {
+    console.error('Error submitting lead:', error);
+  }
+}
+
+sendLead();</pre>
+                    </div>
+
+                    <!-- Tab 5: JavaScript (Browser) -->
+                    <div id="pane-javascript" class="connect-tab-pane hidden">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span class="text-xs text-slate-500 font-medium">JavaScript (Browser Frontend Form Integration)</span>
+                            <button onclick="copyModalCode('code-javascript', this)" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1 cursor-pointer">
+                                <i data-lucide="copy" class="w-3.5 h-3.5"></i> <span>Copy JS Code</span>
+                            </button>
+                        </div>
+                        <pre id="code-javascript" class="modal-code-snippet bg-slate-900 text-slate-100 font-mono text-xs p-4 rounded-xl overflow-x-auto leading-relaxed border border-slate-800">// Frontend Browser Website Lead Submission
+async function submitCustomerLead(event) {
+  if (event) event.preventDefault();
+
+  const response = await fetch('/api/customers', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Secret-Key': 'YOUR_SECRET_KEY',   // Master SECRET_KEY (REQUIRED)
+      'X-API-Key': 'YOUR_USER_API_KEY'     // User API Key (REQUIRED)
+    },
+    body: JSON.stringify({
+      phone: document.getElementById('phone')?.value || '9876543210', // REQUIRED
+      name: document.getElementById('name')?.value || 'Aarav Sharma',
+      email: document.getElementById('email')?.value || 'aarav@example.com',
+      city: document.getElementById('city')?.value || 'Jaipur',
+      state: document.getElementById('state')?.value || 'Rajasthan',
+      pincode: document.getElementById('pincode')?.value || '302001',
+      profile: null, // Send null when image is not available
+      // Extra custom attributes stored in 'data' column as JSON
+      data: {
+        plan: 'Gold',
+        referrer: document.referrer || 'direct',
+        source_url: window.location.href,
+        submitted_at: new Date().toISOString()
+      }
+    })
+  });
+
+  const data = await response.json();
+  if (response.ok) {
+    alert('Thank you! Your information has been submitted.');
+  } else {
+    alert('Submission failed: ' + (data.detail || data.message || 'Error'));
+  }
+}</pre>
+                    </div>
+
+                    <!-- Tab 6: Other (HTML Form & Webhooks) -->
+                    <div id="pane-other" class="connect-tab-pane hidden">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span class="text-xs text-slate-500 font-medium">Other (HTML Form + AJAX / Webhook Payload)</span>
+                            <button onclick="copyModalCode('code-other', this)" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1 cursor-pointer">
+                                <i data-lucide="copy" class="w-3.5 h-3.5"></i> <span>Copy HTML Code</span>
+                            </button>
+                        </div>
+                        <pre id="code-other" class="modal-code-snippet bg-slate-900 text-slate-100 font-mono text-xs p-4 rounded-xl overflow-x-auto leading-relaxed border border-slate-800">&lt;!-- Ready-to-use HTML Form with Lead Submission --&gt;
+&lt;form id="leadCaptureForm" onsubmit="handleCustomerForm(event)"&gt;
+  &lt;input type="tel" id="custPhone" placeholder="Mobile (+919876543210 or 10 digits)" required /&gt;
+  &lt;input type="text" id="custName" placeholder="Full Name" /&gt;
+  &lt;input type="email" id="custEmail" placeholder="Email Address" /&gt;
+  &lt;input type="text" id="custCity" placeholder="City" /&gt;
+  
+  &lt;!-- Custom Extra Data Fields --&gt;
+  &lt;input type="hidden" id="custPlan" value="Gold Member" /&gt;
+  
+  &lt;button type="submit"&gt;Submit Inquiry&lt;/button&gt;
+&lt;/form&gt;
+
+&lt;script&gt;
+async function handleCustomerForm(e) {
+  e.preventDefault();
+  const res = await fetch('https://your-domain.onrender.com/api/customers', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Secret-Key': 'YOUR_SECRET_KEY',
+      'X-API-Key': 'YOUR_USER_API_KEY'
+    },
+    body: JSON.stringify({
+      phone: document.getElementById('custPhone').value,
+      name: document.getElementById('custName').value,
+      email: document.getElementById('custEmail').value,
+      city: document.getElementById('custCity').value,
+      profile: null,
+      data: {
+        plan: document.getElementById('custPlan').value,
+        lead_origin: 'Landing Page Banner',
+        user_agent: navigator.userAgent
+      }
+    })
+  });
+  const json = await res.json();
+  alert(json.success ? 'Lead Saved Successfully!' : 'Error: ' + json.message);
+}
+&lt;/script&gt;</pre>
+                    </div>
                 </div>
             </div>
 
-            <div class="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between sticky bottom-0 bg-slate-50/95 backdrop-blur z-10">
                 <a href="/users" class="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
                     <i data-lucide="key" class="w-4 h-4"></i>
                     <span>Manage Platform API Keys</span>
@@ -277,7 +573,7 @@ curl -X POST https://your-domain.onrender.com/api/customers \
                 <button
                     type="button"
                     onclick="closeWebsiteCodeModal()"
-                    class="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition"
+                    class="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition cursor-pointer"
                 >
                     Close
                 </button>
@@ -328,13 +624,41 @@ curl -X POST https://your-domain.onrender.com/api/customers \
             lucide.createIcons();
         });
 
+        function switchConnectTab(tabKey) {
+            const panes = document.querySelectorAll('.connect-tab-pane');
+            panes.forEach(pane => pane.classList.add('hidden'));
+
+            const buttons = document.querySelectorAll('.connect-tab-btn');
+            buttons.forEach(btn => {
+                btn.classList.remove('bg-indigo-600', 'text-white', 'shadow-sm');
+                btn.classList.add('text-slate-600', 'hover:text-slate-900', 'hover:bg-slate-200');
+            });
+
+            const targetPane = document.getElementById('pane-' + tabKey);
+            if (targetPane) {
+                targetPane.classList.remove('hidden');
+            }
+
+            const targetBtn = document.getElementById('tabBtn-' + tabKey);
+            if (targetBtn) {
+                targetBtn.classList.remove('text-slate-600', 'hover:text-slate-900', 'hover:bg-slate-200');
+                targetBtn.classList.add('bg-indigo-600', 'text-white', 'shadow-sm');
+            }
+            lucide.createIcons();
+        }
+
         function openWebsiteCodeModal() {
             const modal = document.getElementById('websiteModal');
             if (modal) {
+                const origin = window.location.origin;
                 const endpointSpan = document.getElementById('apiEndpointUrl');
                 if (endpointSpan) {
-                    endpointSpan.innerText = window.location.origin + '/api/customers';
+                    endpointSpan.innerText = origin + '/api/customers';
                 }
+                // Update placeholder domain in all code blocks with actual origin
+                document.querySelectorAll('.modal-code-snippet').forEach(el => {
+                    el.innerHTML = el.innerHTML.replaceAll('https://your-domain.onrender.com', origin);
+                });
                 modal.classList.remove('hidden');
                 modal.classList.add('flex');
                 lucide.createIcons();
@@ -356,7 +680,8 @@ curl -X POST https://your-domain.onrender.com/api/customers \
             navigator.clipboard.writeText(text).then(() => {
                 if (btn) {
                     const originalHtml = btn.innerHTML;
-                    btn.innerHTML = '<span class="text-emerald-500 font-bold">Copied!</span>';
+                    btn.innerHTML = '<span class="text-emerald-500 font-bold flex items-center gap-1"><i data-lucide="check" class="w-3.5 h-3.5"></i> Copied!</span>';
+                    lucide.createIcons();
                     setTimeout(() => { btn.innerHTML = originalHtml; lucide.createIcons(); }, 1800);
                 }
             });
