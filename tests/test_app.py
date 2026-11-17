@@ -22,12 +22,7 @@ def test_normalize_indian_phone_unit():
         pass
 
 def get_or_create_test_user():
-    username = f"TestPlatform_{settings.PORT}"
-    users = user_service.list_users()
-    for u in users:
-        if u.username == username:
-            return u
-    return user_service.create_user(UserCreate(username=username, email="test@platform.com", notes="Test Suite User"))
+    return user_service.ensure_default_customer_user()
 
 def test_health_check():
     # Health check is public
@@ -271,57 +266,71 @@ def test_kolkata_timezone_formatting():
     print("✓ Asia/Kolkata 12-hour AM/PM formatting verified")
 
 def test_user_update_and_lead_sync():
-    test_user = get_or_create_test_user()
-    user_id = test_user.id
-    new_username = f"Renamed_{int(time.time())}"
+    # Create temporary user for testing update, portal edit and API edit, then delete in finally block
+    temp_username = f"TmpTest_{int(time.time())}"
+    temp_user = user_service.create_user(UserCreate(username=temp_username, email="tmptest@platform.com", notes="Temp Test User"))
+    user_id = temp_user.id
+    try:
+        new_username = f"Renamed_{int(time.time())}"
 
-    # 1. Update user via service
-    updated = user_service.update_user(
-        user_id=user_id,
-        username=new_username,
-        email="updated@platform.com",
-        notes="Updated notes",
-        is_active=True,
-    )
-    assert updated is not None
-    assert updated.username == new_username
-    assert updated.email == "updated@platform.com"
-    assert updated.notes == "Updated notes"
+        # 1. Update user via service
+        updated = user_service.update_user(
+            user_id=user_id,
+            username=new_username,
+            email="updated@platform.com",
+            notes="Updated notes",
+            is_active=True,
+        )
+        assert updated is not None
+        assert updated.username == new_username
+        assert updated.email == "updated@platform.com"
+        assert updated.notes == "Updated notes"
 
-    # 2. Portal user edit endpoint
-    login_res = client.post(
-        "/login",
-        data={"username": settings.ADMIN_USERNAME, "password": settings.ADMIN_PASSWORD},
-        follow_redirects=False
-    )
-    cookies = login_res.cookies
+        # 2. Portal user edit endpoint
+        login_res = client.post(
+            "/login",
+            data={"username": settings.ADMIN_USERNAME, "password": settings.ADMIN_PASSWORD},
+            follow_redirects=False
+        )
+        cookies = login_res.cookies
 
-    portal_edit_res = client.post(
-        f"/portal/user/{user_id}/edit",
-        data={
-            "username": f"PortalUser_{int(time.time())}",
-            "email": "portal@edit.com",
-            "notes": "Edited via portal",
-            "is_active": "true",
-            "redirect_to": "/users"
-        },
-        cookies=cookies,
-        follow_redirects=False
-    )
-    assert portal_edit_res.status_code == 302
-    assert "msg=user_updated" in portal_edit_res.headers["location"]
+        portal_edit_res = client.post(
+            f"/portal/user/{user_id}/edit",
+            data={
+                "username": f"PortalUser_{int(time.time())}",
+                "email": "portal@edit.com",
+                "notes": "Edited via portal",
+                "is_active": "true",
+                "redirect_to": "/users"
+            },
+            cookies=cookies,
+            follow_redirects=False
+        )
+        assert portal_edit_res.status_code == 302
+        assert "msg=user_updated" in portal_edit_res.headers["location"]
 
-    # 3. API user update endpoint with SECRET_KEY
-    api_update_res = client.put(
-        f"/api/admin/users/{user_id}",
-        headers={"X-Secret-Key": settings.SECRET_KEY},
-        json={
-            "notes": "API updated notes"
-        }
-    )
-    assert api_update_res.status_code == 200
-    assert api_update_res.json()["data"]["notes"] == "API updated notes"
-    print("✓ User edit in service, portal and API verified")
+        # 3. API user update endpoint with SECRET_KEY
+        api_update_res = client.put(
+            f"/api/admin/users/{user_id}",
+            headers={"X-Secret-Key": settings.SECRET_KEY},
+            json={
+                "notes": "API updated notes"
+            }
+        )
+        assert api_update_res.status_code == 200
+        assert api_update_res.json()["data"]["notes"] == "API updated notes"
+        print("✓ User edit in service, portal and API verified")
+    finally:
+        user_service.delete_user(user_id)
+
+    # 4. Verify default Customer user cannot be deleted
+    default_user = user_service.ensure_default_customer_user()
+    try:
+        user_service.delete_user(default_user.id)
+        assert False, "Should have prevented deletion of default Customer user"
+    except ValueError:
+        pass
+    print("✓ Default Customer user deletion prevention verified")
 
 def test_dashboard_reordered_columns_and_pagination():
     login_res = client.post(
@@ -507,4 +516,73 @@ def test_connect_website_modal_with_languages_and_data_column():
     assert "Node.js" in description
     print("✓ Connect Website modal with PHP, Python, Terminal, Node, JS, Other & data column verified")
 
-print("All tests defined!")
+def test_unavailable_user_defaults_to_customer():
+    # 1. API submission using fixed DEFAULT_CUSTOMER_API_KEY
+    random_suffix1 = str(int(time.time() * 100))[-8:]
+    phone1 = f"97{random_suffix1}"
+    res1 = client.post(
+        "/api/customers",
+        headers={
+            "X-Secret-Key": settings.SECRET_KEY,
+            "X-API-Key": user_service.DEFAULT_CUSTOMER_API_KEY,
+        },
+        json={"phone": phone1, "name": "Default Customer User Test"}
+    )
+    assert res1.status_code == 201
+    cust1 = res1.json()["data"]
+    assert cust1["from"] == "Customer"
+
+    # 2. Portal addition with empty / unavailable user source
+    random_suffix2 = str(int(time.time() * 100) + 1)[-8:]
+    phone2 = f"97{random_suffix2}"
+    login_res = client.post(
+        "/login",
+        data={"username": settings.ADMIN_USERNAME, "password": settings.ADMIN_PASSWORD},
+        follow_redirects=False,
+    )
+    cookies = login_res.cookies
+
+    portal_add_res = client.post(
+        "/portal/customer/add",
+        data={
+            "phone": phone2,
+            "name": "Portal Default User Test",
+            "from_source": "",
+        },
+        cookies=cookies,
+        follow_redirects=False,
+    )
+    assert portal_add_res.status_code == 302
+    assert "msg=added" in portal_add_res.headers["location"]
+
+    saved_cust2 = customer_service.get_customer_by_phone(f"+91{phone2}")
+    assert saved_cust2 is not None
+    assert saved_cust2.from_source == "Customer"
+
+    # 3. Direct service call with empty or 'website'/'portal' source
+    random_suffix3 = str(int(time.time() * 100) + 2)[-8:]
+    phone3 = f"97{random_suffix3}"
+    c3 = customer_service.create_customer(
+        data=customer_service.CustomerCreate(phone=phone3, from_source="website")
+    )
+    assert c3.from_source == "Customer"
+    print("✓ Unavailable user correctly stores under standard Customer (portal@customer.com)")
+
+if __name__ == "__main__":
+    test_normalize_indian_phone_unit()
+    test_health_check()
+    test_api_requires_both_secret_key_and_user_api_key()
+    test_create_customer_with_indian_phone_and_uniqueness()
+    test_get_customers_with_both_keys()
+    test_login_flow_and_dashboard()
+    test_dashboard_charts_and_city_state_filters()
+    test_kolkata_timezone_formatting()
+    test_user_update_and_lead_sync()
+    test_dashboard_reordered_columns_and_pagination()
+    test_source_filter_shows_only_users()
+    test_customer_extra_json_data()
+    test_dedicated_customers_page_and_searchable_selects()
+    test_profile_not_available_null_sent()
+    test_connect_website_modal_with_languages_and_data_column()
+    test_unavailable_user_defaults_to_customer()
+    print("ALL TESTS PASSED SUCCESSFULLY!")

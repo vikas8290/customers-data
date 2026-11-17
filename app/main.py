@@ -25,6 +25,8 @@ async def lifespan(app: FastAPI):
     logger.info("Initializing application and connecting to MongoDB...")
     try:
         db_manager.connect()
+        from app.services import user_service
+        user_service.ensure_default_customer_user()
     except Exception as e:
         logger.error(f"Startup MongoDB connection attempt failed: {e}. Will retry on requests.")
     yield

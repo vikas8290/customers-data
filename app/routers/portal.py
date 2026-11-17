@@ -273,7 +273,7 @@ def portal_add_customer(
     pincode: Optional[str] = Form(None),
     city: Optional[str] = Form(None),
     state: Optional[str] = Form(None),
-    from_source: Optional[str] = Form("portal"),
+    from_source: Optional[str] = Form(None),
     data: Optional[str] = Form(None),
     redirect_to: Optional[str] = Form("/customers"),
 ):
@@ -284,6 +284,10 @@ def portal_add_customer(
     dest = redirect_to or "/customers"
     sep = "&" if "?" in dest else "?"
     try:
+        source = from_source.strip() if from_source and from_source.strip() else user_service.DEFAULT_CUSTOMER_USERNAME
+        if source.lower() in ["website", "portal", "none", ""]:
+            source = user_service.DEFAULT_CUSTOMER_USERNAME
+
         cust_create = CustomerCreate(
             phone=phone,
             name=name or None,
@@ -294,7 +298,7 @@ def portal_add_customer(
             pincode=pincode or None,
             city=city or None,
             state=state or None,
-            from_source=from_source or "portal",
+            from_source=source,
             data=data or None,
         )
         customer_service.create_customer(cust_create, ip_address="admin-portal")

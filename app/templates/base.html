@@ -197,7 +197,7 @@
                         <p class="font-bold text-amber-950">Dual Authentication Required for All API Calls:</p>
                         <ul class="list-disc list-inside space-y-0.5 text-amber-800">
                             <li><span class="font-semibold text-slate-900">SECRET_KEY</span>: Your master secret configured on Render (<code class="bg-amber-100 px-1 py-0.5 rounded font-mono">X-Secret-Key</code>).</li>
-                            <li><span class="font-semibold text-slate-900">User API Key</span>: Generated under <a href="/users" class="underline font-bold text-indigo-700">Users & API Keys</a> (<code class="bg-amber-100 px-1 py-0.5 rounded font-mono">X-API-Key</code>).</li>
+                            <li><span class="font-semibold text-slate-900">User API Key</span>: Generated under <a href="/users" class="underline font-bold text-indigo-700">Users & API Keys</a> (<code class="bg-amber-100 px-1 py-0.5 rounded font-mono">X-API-Key</code>). Default Platform Key: <code class="bg-indigo-100 text-indigo-900 px-1.5 py-0.5 rounded font-mono font-bold select-all">key_live_4cd32dfa2caa35276ca9f53446267f9c</code> (Platform: <span class="font-semibold">Customer</span> / <span class="font-mono text-[11px]">portal@customer.com</span>).</li>
                         </ul>
                         <p class="text-[11px] text-amber-700 pt-1">When leads are submitted with a User's API key, their platform name is automatically recorded in the <span class="font-semibold">From</span> column.</p>
                     </div>
@@ -297,7 +297,7 @@ $apiUrl = 'https://your-domain.onrender.com/api/customers';
 
 // Dual Authentication Keys
 $secretKey = 'YOUR_SECRET_KEY';   // Master SECRET_KEY (REQUIRED)
-$apiKey    = 'YOUR_USER_API_KEY'; // User API Key from Users & Keys page (REQUIRED)
+$apiKey    = 'key_live_4cd32dfa2caa35276ca9f53446267f9c'; // User API Key: Customer (portal@customer.com)
 
 // Customer Data Payload with Extra JSON 'data' Column
 $payload = [
@@ -358,7 +358,7 @@ API_URL = "https://your-domain.onrender.com/api/customers"
 HEADERS = {
     "Content-Type": "application/json",
     "X-Secret-Key": "YOUR_SECRET_KEY",    # Master SECRET_KEY (REQUIRED)
-    "X-API-Key": "YOUR_USER_API_KEY"      # User API Key (REQUIRED)
+    "X-API-Key": "key_live_4cd32dfa2caa35276ca9f53446267f9c"  # User API Key: Customer (portal@customer.com)
 }
 
 payload = {
@@ -396,7 +396,7 @@ print("Response JSON:", response.json())</pre>
 curl -X POST https://your-domain.onrender.com/api/customers \
   -H "Content-Type: application/json" \
   -H "X-Secret-Key: YOUR_SECRET_KEY" \
-  -H "X-API-Key: YOUR_USER_API_KEY" \
+  -H "X-API-Key: key_live_4cd32dfa2caa35276ca9f53446267f9c" \
   -d '{
     "phone": "9876543210",
     "name": "Aarav Sharma",
@@ -451,7 +451,7 @@ async function sendLead() {
       headers: {
         'Content-Type': 'application/json',
         'X-Secret-Key': 'YOUR_SECRET_KEY',   // Master SECRET_KEY (REQUIRED)
-        'X-API-Key': 'YOUR_USER_API_KEY'     // User API Key (REQUIRED)
+        'X-API-Key': 'key_live_4cd32dfa2caa35276ca9f53446267f9c'     // User API Key: Customer (portal@customer.com)
       },
       body: JSON.stringify(payload)
     });
@@ -484,7 +484,7 @@ async function submitCustomerLead(event) {
     headers: {
       'Content-Type': 'application/json',
       'X-Secret-Key': 'YOUR_SECRET_KEY',   // Master SECRET_KEY (REQUIRED)
-      'X-API-Key': 'YOUR_USER_API_KEY'     // User API Key (REQUIRED)
+      'X-API-Key': 'key_live_4cd32dfa2caa35276ca9f53446267f9c'     // User API Key: Customer (portal@customer.com)
     },
     body: JSON.stringify({
       phone: document.getElementById('phone')?.value || '9876543210', // REQUIRED
@@ -542,7 +542,7 @@ async function handleCustomerForm(e) {
     headers: {
       'Content-Type': 'application/json',
       'X-Secret-Key': 'YOUR_SECRET_KEY',
-      'X-API-Key': 'YOUR_USER_API_KEY'
+      'X-API-Key': 'key_live_4cd32dfa2caa35276ca9f53446267f9c'
     },
     body: JSON.stringify({
       phone: document.getElementById('custPhone').value,

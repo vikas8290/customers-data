@@ -9,9 +9,11 @@ def doc_to_customer(doc: dict[str, Any]) -> CustomerInDB:
     """Helper to convert MongoDB document to CustomerInDB model."""
     doc_copy = dict(doc)
     doc_copy["id"] = str(doc_copy.pop("_id"))
-    # Map stored 'from' to 'from_source' or alias
-    if "from" in doc_copy:
-        doc_copy["from_source"] = doc_copy.get("from")
+    from_val = doc_copy.get("from")
+    if not from_val or from_val in ("website", "portal", "None", "", None):
+        from_val = "Customer"
+    doc_copy["from"] = from_val
+    doc_copy["from_source"] = from_val
     if doc_copy.get("profile") in ("", "null", "None", "-"):
         doc_copy["profile"] = None
     return CustomerInDB(**doc_copy)
@@ -30,6 +32,10 @@ def create_customer(
     if existing:
         raise ValueError(f"Customer with phone number '{phone}' already exists.")
 
+    from_source = data.from_source.strip() if data.from_source and data.from_source.strip() else "Customer"
+    if from_source.lower() in ("website", "portal", "none", ""):
+        from_source = "Customer"
+
     now = datetime.now(timezone.utc)
     doc = {
         "phone": phone,
@@ -41,7 +47,7 @@ def create_customer(
         "pincode": data.pincode.strip() if data.pincode else None,
         "city": data.city.strip() if data.city else None,
         "state": data.state.strip() if data.state else None,
-        "from": (data.from_source.strip() if data.from_source else "website"),
+        "from": from_source,
         "data": data.data if data.data else None,
         "created_at": now,
         "updated_at": now,

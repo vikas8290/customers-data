@@ -88,10 +88,12 @@ async def collect_customer(
 
     # 3. Automatically assign the user's name to the "from" column
     if auth_ctx.get("type") == "user":
-        payload["from_source"] = auth_ctx.get("username")
+        payload["from_source"] = auth_ctx.get("username") or user_service.DEFAULT_CUSTOMER_USERNAME
     else:
-        if "from" in payload and "from_source" not in payload:
-            payload["from_source"] = payload["from"]
+        source = payload.get("from_source") or payload.get("from")
+        if not source or str(source).strip().lower() in ["website", "portal", "none", ""]:
+            source = user_service.DEFAULT_CUSTOMER_USERNAME
+        payload["from_source"] = source
 
     try:
         data = CustomerCreate(**payload)

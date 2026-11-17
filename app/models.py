@@ -45,7 +45,7 @@ class CustomerBase(BaseModel):
     city: Optional[str] = Field(default=None, description="City")
     state: Optional[str] = Field(default=None, description="State")
     from_source: Optional[str] = Field(
-        default="website",
+        default="Customer",
         alias="from",
         description="Source/Platform where data was collected. Shows user name if submitted via User API Key.",
     )
