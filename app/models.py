@@ -17,7 +17,7 @@ class CustomerBase(BaseModel):
     from_source: Optional[str] = Field(
         default="website",
         alias="from",
-        description="Source where the data was collected (e.g., website, campaign, landing page)",
+        description="Source/Platform where data was collected. Shows user name if submitted via User API Key.",
     )
 
     model_config = ConfigDict(
@@ -31,7 +31,6 @@ class CustomerBase(BaseModel):
         cleaned = v.strip()
         if not cleaned:
             raise ValueError("Phone number cannot be empty.")
-        # Minimal sanity check (at least 5 characters/digits)
         digits_only = re.sub(r"[^\d+]", "", cleaned)
         if len(digits_only) < 5:
             raise ValueError("Phone number must contain at least 5 digits.")
@@ -95,3 +94,44 @@ class DashboardStats(BaseModel):
     this_month_count: int
     sources_breakdown: dict[str, int]
     top_cities: list[dict[str, Any]]
+
+# ================= USER / API KEY MODELS =================
+
+class UserCreate(BaseModel):
+    username: str = Field(..., description="Platform / User name (e.g. Shopify, Website-1, MobileApp, Rahul)")
+    email: Optional[str] = Field(default=None, description="Optional contact email")
+    notes: Optional[str] = Field(default=None, description="Optional platform notes or description")
+
+    @field_validator("username")
+    @classmethod
+    def validate_username(cls, v: str) -> str:
+        cleaned = v.strip()
+        if not cleaned:
+            raise ValueError("User/Platform name cannot be empty.")
+        return cleaned
+
+class UserInDB(BaseModel):
+    id: str
+    username: str
+    email: Optional[str] = None
+    notes: Optional[str] = None
+    api_key: str
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    last_used_at: Optional[datetime] = None
+    leads_count: int = 0
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        from_attributes=True
+    )
+
+class UserResponse(BaseModel):
+    success: bool = True
+    message: str = "Success"
+    data: Optional[UserInDB] = None
+
+class UserListResponse(BaseModel):
+    success: bool = True
+    total: int
+    users: list[UserInDB]

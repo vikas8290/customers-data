@@ -11,6 +11,11 @@ A complete, production-ready Python web application for collecting customer lead
   - Supports both **JSON payloads** and standard **HTML Form Data (`multipart/form-data` / `application/x-www-form-urlencoded`)**.
   - **CORS enabled**: Any website frontend can post data directly without CORS errors.
   - Interactive Swagger UI documentation at `/docs` and ReDoc at `/redoc`.
+- **Platform Users & API Keys Management**:
+  - Admin can register multiple platforms / users (e.g., `Shopify Store`, `WordPress Site`, `Landing Page A`, `Partner Client`).
+  - Automatically generates a unique API key (`key_live_...`) for each user.
+  - When leads are submitted using that user's API key, their **username is automatically tagged in the customer's `from` column**.
+  - Admin can filter all customer leads by platform with a single click.
 - **Customer Data Schema**:
   - **`phone`** (*Required* - primary customer identifier)
   - **`name`** (*Optional*)

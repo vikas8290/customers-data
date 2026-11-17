@@ -1,6 +1,7 @@
-from typing import Optional
+from typing import Optional, Any
 from fastapi import Request, HTTPException, status
 from app.config import settings
+from app.services import user_service
 
 def authenticate_admin(username: str, password: str) -> bool:
     """Validate username and password against configured admin credentials."""
@@ -24,25 +25,19 @@ def require_admin_portal(request: Request):
         return False
     return True
 
-def validate_secret_key(key: Optional[str]) -> bool:
-    """Check if provided key matches the configured SECRET_KEY."""
-    if not settings.SECRET_KEY or not key:
-        return False
-    return key.strip() == settings.SECRET_KEY.strip()
-
-def extract_secret_key_from_request(request: Request, body_key: Optional[str] = None) -> Optional[str]:
+def extract_api_key_from_request(request: Request, body_key: Optional[str] = None) -> Optional[str]:
     """
-    Extract secret key from:
+    Extract API key / Secret key from:
     1. Body key (passed directly if sent in JSON or form)
-    2. Header: X-Secret-Key or X-API-Key
-    3. Header: Authorization (Bearer <SECRET_KEY>)
-    4. Query parameter: ?secret_key=<SECRET_KEY> or ?api_key=<SECRET_KEY>
+    2. Header: X-API-Key or X-Secret-Key
+    3. Header: Authorization (Bearer <KEY>)
+    4. Query parameter: ?api_key=<KEY> or ?secret_key=<KEY>
     """
     if body_key:
         return str(body_key).strip()
 
     # Headers
-    header_key = request.headers.get("x-secret-key") or request.headers.get("x-api-key")
+    header_key = request.headers.get("x-api-key") or request.headers.get("x-secret-key")
     if header_key:
         return header_key.strip()
 
@@ -56,29 +51,47 @@ def extract_secret_key_from_request(request: Request, body_key: Optional[str] = 
             return parts[0].strip()
 
     # Query params
-    query_key = request.query_params.get("secret_key") or request.query_params.get("api_key")
+    query_key = request.query_params.get("api_key") or request.query_params.get("secret_key")
     if query_key:
         return query_key.strip()
 
     return None
 
-def verify_api_secret_key(request: Request, body_key: Optional[str] = None) -> bool:
+def verify_api_access(request: Request, body_key: Optional[str] = None) -> dict[str, Any]:
     """
-    Verify that the incoming request contains a valid SECRET_KEY.
-    Allows active admin session or matching secret key.
-    Raises 401 HTTPException if invalid or missing.
+    Verify API access. Returns auth context dict:
+    - {"type": "admin", "username": "admin"} if Master Secret Key or Admin session
+    - {"type": "user", "username": user.username, "user_id": user.id, "user": user} if User API Key
+    Raises 401 if key is missing or invalid.
     """
     # 1. Allow active admin portal session
     if is_admin_authenticated(request):
-        return True
+        return {"type": "admin", "username": request.session.get("admin_user", "admin"), "user": None}
 
     # 2. Extract key from body/header/query
-    provided = extract_secret_key_from_request(request, body_key=body_key)
-
-    if not validate_secret_key(provided):
+    provided_key = extract_api_key_from_request(request, body_key=body_key)
+    if not provided_key:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Unauthorized: Valid SECRET_KEY is required to access this API. Provide it via 'X-Secret-Key' header, 'Authorization: Bearer <SECRET_KEY>', '?secret_key=' query param, or in request body.",
+            detail="Unauthorized: Valid API Key or SECRET_KEY is required. Pass via header 'X-API-Key', 'Authorization: Bearer <KEY>', or query param '?api_key='.",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    return True
+
+    # 3. Check if it matches Master SECRET_KEY
+    if settings.SECRET_KEY and provided_key.strip() == settings.SECRET_KEY.strip():
+        return {"type": "admin", "username": "admin", "user": None}
+
+    # 4. Check if it matches a registered user's API Key
+    user = user_service.get_user_by_api_key(provided_key)
+    if user:
+        return {"type": "user", "username": user.username, "user_id": user.id, "user": user}
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Unauthorized: The provided API Key is invalid or has been deactivated.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+def verify_api_secret_key(request: Request) -> dict[str, Any]:
+    """FastAPI Depends wrapper for verify_api_access."""
+    return verify_api_access(request)

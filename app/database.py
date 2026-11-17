@@ -32,13 +32,16 @@ class DatabaseManager:
 
     def _ensure_indexes(self):
         try:
-            col = self.get_customers_collection()
-            # Index on created_at for fast descending sort
-            col.create_index([("created_at", DESCENDING)])
-            # Index on phone for fast lookup
-            col.create_index([("phone", 1)])
-            # Index on source (from)
-            col.create_index([("from", 1)])
+            # Customers collection indexes
+            cust_col = self.get_customers_collection()
+            cust_col.create_index([("created_at", DESCENDING)])
+            cust_col.create_index([("phone", 1)])
+            cust_col.create_index([("from", 1)])
+
+            # Users collection indexes
+            users_col = self.get_users_collection()
+            users_col.create_index([("api_key", 1)], unique=True)
+            users_col.create_index([("username", 1)])
         except Exception as e:
             logger.warning(f"Could not create MongoDB indexes: {e}")
 
@@ -49,6 +52,9 @@ class DatabaseManager:
 
     def get_customers_collection(self) -> Collection:
         return self.get_database()[settings.COLLECTION_NAME]
+
+    def get_users_collection(self) -> Collection:
+        return self.get_database()["users"]
 
     def ping(self) -> bool:
         try:
@@ -74,3 +80,6 @@ def get_db() -> Database:
 
 def get_customers_collection() -> Collection:
     return db_manager.get_customers_collection()
+
+def get_users_collection() -> Collection:
+    return db_manager.get_users_collection()

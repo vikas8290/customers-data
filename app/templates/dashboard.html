@@ -6,7 +6,43 @@
 <div class="space-y-6">
 
     <!-- Notification Messages -->
-    {% if msg == "added" %}
+    {% if msg == "user_added" %}
+    <div class="bg-indigo-50 border border-indigo-200 text-indigo-900 px-5 py-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-indigo-500/20">
+                <i data-lucide="key" class="w-5 h-5"></i>
+            </div>
+            <div>
+                <p class="text-sm font-bold">New Platform User Registered: <span class="text-indigo-700">{{ new_user }}</span></p>
+                <div class="flex flex-wrap items-center gap-2 mt-1">
+                    <span class="text-xs text-slate-500">API Key:</span>
+                    <code class="text-xs font-mono font-bold bg-white px-2.5 py-1 rounded-lg border border-indigo-200 text-indigo-800">{{ new_key }}</code>
+                    <button onclick="copyToClipboard('{{ new_key }}', this)" class="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition">
+                        <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy Key
+                    </button>
+                </div>
+            </div>
+        </div>
+        <button onclick="this.parentElement.remove()" class="text-indigo-400 hover:text-indigo-600"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>
+    {% elif msg == "user_deleted" %}
+    <div class="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-xl flex items-center justify-between shadow-sm">
+        <div class="flex items-center gap-2 text-sm font-medium">
+            <i data-lucide="trash-2" class="w-5 h-5 text-amber-600"></i>
+            <span>User/Platform deleted and API Key revoked.</span>
+        </div>
+        <button onclick="this.parentElement.remove()" class="text-amber-600 hover:text-amber-800"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>
+    {% elif msg == "key_regenerated" %}
+    <div class="bg-indigo-50 border border-indigo-200 text-indigo-900 px-5 py-4 rounded-xl flex items-center justify-between shadow-sm">
+        <div class="flex items-center gap-2 text-sm font-medium">
+            <i data-lucide="refresh-cw" class="w-5 h-5 text-indigo-600"></i>
+            <span>New API Key Generated: <code class="font-mono font-bold bg-white px-2 py-0.5 rounded border border-indigo-200 text-indigo-800">{{ new_key }}</code></span>
+            <button onclick="copyToClipboard('{{ new_key }}', this)" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 ml-2">Copy</button>
+        </div>
+        <button onclick="this.parentElement.remove()" class="text-indigo-600 hover:text-indigo-800"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>
+    {% elif msg == "added" %}
     <div class="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-xl flex items-center justify-between shadow-sm">
         <div class="flex items-center gap-2 text-sm font-medium">
             <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-600"></i>
@@ -149,6 +185,18 @@
 
             <!-- Buttons: Export to Excel & Add Customer & API Integration -->
             <div class="flex flex-wrap items-center gap-2.5">
+                <!-- Platform Users & API Keys Button -->
+                <button
+                    type="button"
+                    onclick="openUsersModal()"
+                    class="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-xl transition"
+                    title="Manage Users & API Keys"
+                >
+                    <i data-lucide="key" class="w-4 h-4"></i>
+                    <span>Users & API Keys</span>
+                    <span class="px-1.5 py-0.5 rounded-full text-xs bg-violet-200 text-violet-800 font-bold">{{ users | length }}</span>
+                </button>
+
                 <!-- Website API Code Modal Trigger -->
                 <button
                     type="button"
@@ -822,6 +870,180 @@ curl -X POST https://your-app-url.onrender.com/api/customers \
         </div>
     </div>
 </div>
+
+<!-- 6. USERS & API KEYS MANAGEMENT MODAL -->
+<div id="usersModal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
+        <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center">
+                    <i data-lucide="key" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-slate-900">Platform Users & API Keys</h3>
+                    <p class="text-xs text-slate-500">Register platforms, generate API keys, and track leads per platform</p>
+                </div>
+            </div>
+            <button onclick="closeUsersModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+
+        <div class="p-6 space-y-6 text-sm">
+            <!-- Register User Form -->
+            <div class="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200/80">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 mb-3 flex items-center gap-1.5">
+                    <i data-lucide="user-plus" class="w-4 h-4 text-violet-600"></i>
+                    <span>Register New Platform / User</span>
+                </h4>
+                <form action="/portal/user/add" method="POST" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Platform / User Name *</label>
+                        <input
+                            type="text"
+                            name="username"
+                            required
+                            placeholder="e.g. Shopify, Website-1, Rahul"
+                            class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                        >
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Email (Optional)</label>
+                        <input
+                            type="email"
+                            name="email"
+                            placeholder="client@example.com"
+                            class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                        >
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Notes / Description (Optional)</label>
+                        <input
+                            type="text"
+                            name="notes"
+                            placeholder="Landing page lead form"
+                            class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                        >
+                    </div>
+                    <div class="sm:col-span-3 flex justify-end">
+                        <button
+                            type="submit"
+                            class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-violet-600 hover:bg-violet-700 rounded-xl shadow-sm transition"
+                        >
+                            <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                            <span>Register & Generate API Key</span>
+                        </button>
+                    </div>
+                </form>
+                <p class="text-xs text-slate-400 mt-2">
+                    💡 <strong>Platform Filter:</strong> Any leads submitted with this user's API Key will automatically show their name in the <strong>From</strong> column, allowing you to filter leads by this platform.
+                </p>
+            </div>
+
+            <!-- Registered Users Table -->
+            <div>
+                <div class="flex items-center justify-between mb-3">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700">
+                        Registered Platforms & Users ({{ users | length }})
+                    </h4>
+                </div>
+
+                {% if users %}
+                <div class="border border-slate-200 rounded-xl overflow-hidden">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-50 text-slate-500 uppercase font-semibold border-b border-slate-200">
+                            <tr>
+                                <th class="py-2.5 px-3">Platform / User</th>
+                                <th class="py-2.5 px-3">Generated API Key</th>
+                                <th class="py-2.5 px-3 text-center">Leads Collected</th>
+                                <th class="py-2.5 px-3">Registered On</th>
+                                <th class="py-2.5 px-3 text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            {% for u in users %}
+                            <tr class="hover:bg-slate-50/60 transition">
+                                <td class="py-2.5 px-3">
+                                    <div class="font-bold text-slate-900">{{ u.username }}</div>
+                                    {% if u.email %}
+                                    <div class="text-slate-400 text-[11px]">{{ u.email }}</div>
+                                    {% endif %}
+                                </td>
+                                <td class="py-2.5 px-3">
+                                    <div class="flex items-center gap-1.5">
+                                        <code class="font-mono text-[11px] bg-slate-100 px-2 py-0.5 rounded border border-slate-200 text-slate-800 font-semibold truncate max-w-[190px]" title="{{ u.api_key }}">
+                                            {{ u.api_key }}
+                                        </code>
+                                        <button
+                                            onclick="copyToClipboard('{{ u.api_key }}', this)"
+                                            class="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                                            title="Copy API Key"
+                                        >
+                                            <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                                <td class="py-2.5 px-3 text-center">
+                                    <a
+                                        href="/dashboard?source={{ u.username }}"
+                                        class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200"
+                                        title="Click to view all leads from {{ u.username }}"
+                                    >
+                                        {{ u.leads_count }} leads
+                                    </a>
+                                </td>
+                                <td class="py-2.5 px-3 text-slate-400 whitespace-nowrap">
+                                    {{ u.created_at.strftime("%d %b %Y") if u.created_at else '-' }}
+                                </td>
+                                <td class="py-2.5 px-3 text-center whitespace-nowrap">
+                                    <div class="inline-flex items-center gap-1">
+                                        <!-- Regenerate Key Form -->
+                                        <form action="/portal/user/{{ u.id }}/regenerate-key" method="POST" onsubmit="return confirm('Regenerate API key for {{ u.username }}? The old key will stop working immediately.');">
+                                            <button
+                                                type="submit"
+                                                class="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition"
+                                                title="Regenerate Key"
+                                            >
+                                                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                                            </button>
+                                        </form>
+
+                                        <!-- Delete User Form -->
+                                        <form action="/portal/user/{{ u.id }}/delete" method="POST" onsubmit="return confirm('Delete user {{ u.username }} and revoke this API key?');">
+                                            <button
+                                                type="submit"
+                                                class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                                                title="Delete User"
+                                            >
+                                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-8 bg-slate-50 rounded-xl border border-slate-200/60">
+                    <i data-lucide="key" class="w-8 h-8 text-slate-400 mx-auto mb-2"></i>
+                    <p class="text-xs font-semibold text-slate-700">No Platforms or Users Registered Yet</p>
+                    <p class="text-xs text-slate-400 mt-0.5">Use the form above to register your first platform and get an API key.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+            <button
+                type="button"
+                onclick="closeUsersModal()"
+                class="px-4 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition"
+            >
+                Done
+            </button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -974,6 +1196,17 @@ curl -X POST https://your-app-url.onrender.com/api/customers \
         document.getElementById('websiteModal').classList.remove('flex');
     }
 
+    // Users & API Keys Modal
+    function openUsersModal() {
+        document.getElementById('usersModal').classList.remove('hidden');
+        document.getElementById('usersModal').classList.add('flex');
+        lucide.createIcons();
+    }
+    function closeUsersModal() {
+        document.getElementById('usersModal').classList.add('hidden');
+        document.getElementById('usersModal').classList.remove('flex');
+    }
+
     // Close on escape key
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
@@ -982,6 +1215,7 @@ curl -X POST https://your-app-url.onrender.com/api/customers \
             closeEditModal();
             closeDeleteModal();
             closeWebsiteCodeModal();
+            closeUsersModal();
         }
     });
 </script>

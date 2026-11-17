@@ -8,10 +8,13 @@ from app.models import (
     PaginatedCustomersResponse,
     CustomerInDB,
     DashboardStats,
+    UserCreate,
+    UserResponse,
+    UserListResponse,
 )
-from app.services import customer_service
+from app.services import customer_service, user_service
 from app.database import db_manager
-from app.auth import verify_api_secret_key
+from app.auth import verify_api_access, verify_api_secret_key
 
 router = APIRouter(prefix="/api", tags=["API Endpoints"])
 
@@ -29,13 +32,13 @@ def health_check():
     "/customers",
     response_model=CustomerResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Collect Customer Data (Requires SECRET_KEY)",
-    description="Endpoint to submit customer data. Requires SECRET_KEY in 'X-Secret-Key' header, 'Authorization: Bearer <SECRET_KEY>', query param '?secret_key=', or inside request body."
+    summary="Collect Customer Data (Requires User API Key or Master Secret Key)",
+    description="Endpoint for platforms/websites to submit leads. When using a User API Key, the customer's 'from' column is automatically set to the user/platform name for easy filtering."
 )
 async def collect_customer(request: Request):
     """
     Accepts customer submission via JSON or Form Data.
-    Requires valid SECRET_KEY.
+    Requires valid API Key (User key or Master key).
     Only `phone` is mandatory.
     Fields supported:
     - phone (Required)
@@ -63,15 +66,20 @@ async def collect_customer(request: Request):
             form = await request.form()
             payload = dict(form)
 
-    # 1. Extract secret key if provided inside the body
-    body_secret_key = payload.pop("secret_key", None) or payload.pop("api_key", None)
+    # 1. Extract API key or Secret key if provided inside the body
+    body_key = payload.pop("api_key", None) or payload.pop("secret_key", None)
 
-    # 2. Authenticate SECRET_KEY requirement
-    verify_api_secret_key(request, body_key=body_secret_key)
+    # 2. Authenticate API Key or Master Secret Key
+    auth_ctx = verify_api_access(request, body_key=body_key)
 
-    # 3. Allow 'source' or 'from' in payload
-    if "from" in payload and "from_source" not in payload:
-        payload["from_source"] = payload["from"]
+    # 3. If submitted via User API Key, automatically assign the user's name to the "from" column!
+    if auth_ctx.get("type") == "user":
+        # The User's name shows in the customer's "from" column so admin can filter by this platform
+        payload["from_source"] = auth_ctx.get("username")
+    else:
+        # For Master Secret Key or Admin Portal session
+        if "from" in payload and "from_source" not in payload:
+            payload["from_source"] = payload["from"]
 
     try:
         data = CustomerCreate(**payload)
@@ -116,11 +124,11 @@ async def collect_customer(request: Request):
     "/customers",
     response_model=PaginatedCustomersResponse,
     dependencies=[Depends(verify_api_secret_key)],
-    summary="Get List of Customers (Requires SECRET_KEY)"
+    summary="Get List of Customers (Requires API Key or Admin Key)"
 )
 def get_customers(
     search: Optional[str] = Query(None, description="Search term for name, phone, email, city, address"),
-    source: Optional[str] = Query(None, alias="from", description="Filter by collection source (e.g., website)"),
+    source: Optional[str] = Query(None, alias="from", description="Filter by platform / user name (e.g., Shopify, Website-1)"),
     city: Optional[str] = Query(None, description="Filter by city"),
     state: Optional[str] = Query(None, description="Filter by state"),
     page: int = Query(1, ge=1, description="Page number"),
@@ -150,7 +158,7 @@ def get_customers(
     "/customers/{customer_id}",
     response_model=CustomerResponse,
     dependencies=[Depends(verify_api_secret_key)],
-    summary="Get Single Customer by ID (Requires SECRET_KEY)"
+    summary="Get Single Customer by ID"
 )
 def get_customer(customer_id: str):
     """Fetch details of a specific customer by ID."""
@@ -166,7 +174,7 @@ def get_customer(customer_id: str):
     "/customers/{customer_id}",
     response_model=CustomerResponse,
     dependencies=[Depends(verify_api_secret_key)],
-    summary="Update Customer Details (Requires SECRET_KEY)"
+    summary="Update Customer Details"
 )
 def update_customer(customer_id: str, data: CustomerUpdate):
     """Update details of an existing customer."""
@@ -185,7 +193,7 @@ def update_customer(customer_id: str, data: CustomerUpdate):
 @router.delete(
     "/customers/{customer_id}",
     dependencies=[Depends(verify_api_secret_key)],
-    summary="Delete Customer Record (Requires SECRET_KEY)"
+    summary="Delete Customer Record"
 )
 def delete_customer(customer_id: str):
     """Delete a customer record by ID."""
@@ -201,7 +209,7 @@ def delete_customer(customer_id: str):
     "/stats",
     response_model=DashboardStats,
     dependencies=[Depends(verify_api_secret_key)],
-    summary="Customer Analytics & Statistics (Requires SECRET_KEY)"
+    summary="Customer Analytics & Statistics"
 )
 def get_stats():
     """Retrieve summary metrics, source distribution, and city counts."""
@@ -211,9 +219,52 @@ def get_stats():
 @router.get(
     "/sources",
     dependencies=[Depends(verify_api_secret_key)],
-    summary="List Distinct Collection Sources (Requires SECRET_KEY)"
+    summary="List Distinct Platform / User Sources"
 )
 def get_sources():
-    """Returns a list of all sources recorded across customers."""
+    """Returns a list of all platforms/sources recorded across customers."""
     sources = customer_service.get_unique_sources()
     return {"success": True, "sources": sources}
+
+# ================= ADMIN USER & API KEY MANAGEMENT ENDPOINTS =================
+
+@router.post(
+    "/admin/users",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Admin: Register Platform User & Generate Key"
+)
+def api_create_user(data: UserCreate, auth: dict = Depends(verify_api_secret_key)):
+    """Admin registers a user/platform and automatically generates their API key."""
+    if auth.get("type") != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Master Admin key or session required.")
+    try:
+        user = user_service.create_user(data)
+        return UserResponse(success=True, message="User registered successfully", data=user)
+    except ValueError as ve:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
+
+@router.get(
+    "/admin/users",
+    response_model=UserListResponse,
+    summary="Admin: List All Registered Users & API Keys"
+)
+def api_list_users(auth: dict = Depends(verify_api_secret_key)):
+    """List all registered users, their API keys, and collected lead counts."""
+    if auth.get("type") != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Master Admin key or session required.")
+    users = user_service.list_users()
+    return UserListResponse(success=True, total=len(users), users=users)
+
+@router.delete(
+    "/admin/users/{user_id}",
+    summary="Admin: Delete User & Revoke Key"
+)
+def api_delete_user(user_id: str, auth: dict = Depends(verify_api_secret_key)):
+    """Delete a user/platform and revoke their API key."""
+    if auth.get("type") != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Master Admin key or session required.")
+    success = user_service.delete_user(user_id)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+    return {"success": True, "message": "User deleted and API key revoked."}

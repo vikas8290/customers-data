@@ -6,8 +6,8 @@ from fastapi.templating import Jinja2Templates
 from pathlib import Path
 
 from app.auth import authenticate_admin, is_admin_authenticated
-from app.services import customer_service, excel_service
-from app.models import CustomerCreate, CustomerUpdate
+from app.services import customer_service, excel_service, user_service
+from app.models import CustomerCreate, CustomerUpdate, UserCreate
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
@@ -70,8 +70,10 @@ def dashboard(
     page_size: int = 20,
     msg: Optional[str] = None,
     error: Optional[str] = None,
+    new_user: Optional[str] = None,
+    new_key: Optional[str] = None,
 ):
-    """Render the customer management dashboard with search, filters, and metrics."""
+    """Render the customer management dashboard with search, filters, metrics, and user management."""
     if not is_admin_authenticated(request):
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
@@ -86,6 +88,7 @@ def dashboard(
         "top_cities": [],
     }
     unique_sources = []
+    users = []
 
     try:
         items, total = customer_service.list_customers(
@@ -97,6 +100,7 @@ def dashboard(
         )
         stats = customer_service.get_dashboard_stats()
         unique_sources = customer_service.get_unique_sources()
+        users = user_service.list_users()
     except Exception as e:
         err_msg = str(e)
         if "SSL handshake failed" in err_msg or "ServerSelectionTimeoutError" in err_msg or "TLSV1_ALERT" in err_msg:
@@ -121,11 +125,14 @@ def dashboard(
             "total_pages": total_pages,
             "stats": stats,
             "unique_sources": unique_sources,
+            "users": users,
             "search": search or "",
             "source_filter": source or "",
             "city_filter": city or "",
             "msg": msg,
             "error": db_error,
+            "new_user": new_user,
+            "new_key": new_key,
         }
     )
 
@@ -211,6 +218,47 @@ def portal_delete_customer(request: Request, customer_id: str):
     customer_service.delete_customer(customer_id)
     return RedirectResponse(url="/dashboard?msg=deleted", status_code=status.HTTP_302_FOUND)
 
+# ================= ADMIN USER / PLATFORM REGISTRATION ROUTES =================
+
+@router.post("/portal/user/add", include_in_schema=False)
+def portal_add_user(
+    request: Request,
+    username: str = Form(...),
+    email: Optional[str] = Form(None),
+    notes: Optional[str] = Form(None),
+):
+    """Admin registers a user/platform and generates their API Key."""
+    if not is_admin_authenticated(request):
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+
+    try:
+        data = UserCreate(username=username, email=email or None, notes=notes or None)
+        new_user = user_service.create_user(data)
+        return RedirectResponse(
+            url=f"/dashboard?msg=user_added&new_user={new_user.username}&new_key={new_user.api_key}",
+            status_code=status.HTTP_302_FOUND
+        )
+    except Exception as e:
+        return RedirectResponse(url=f"/dashboard?error={str(e)}", status_code=status.HTTP_302_FOUND)
+
+@router.post("/portal/user/{user_id}/delete", include_in_schema=False)
+def portal_delete_user(request: Request, user_id: str):
+    """Admin deletes user and revokes their API Key."""
+    if not is_admin_authenticated(request):
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+
+    user_service.delete_user(user_id)
+    return RedirectResponse(url="/dashboard?msg=user_deleted", status_code=status.HTTP_302_FOUND)
+
+@router.post("/portal/user/{user_id}/regenerate-key", include_in_schema=False)
+def portal_regenerate_user_key(request: Request, user_id: str):
+    """Admin regenerates a new API Key for a user."""
+    if not is_admin_authenticated(request):
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+
+    new_key = user_service.regenerate_api_key(user_id)
+    return RedirectResponse(url=f"/dashboard?msg=key_regenerated&new_key={new_key}", status_code=status.HTTP_302_FOUND)
+
 @router.get("/export/excel", summary="Export Customers to Excel Spreadsheet")
 def export_excel(
     request: Request,
@@ -224,7 +272,6 @@ def export_excel(
     Accessible from the portal or directly with admin session.
     """
     if not is_admin_authenticated(request):
-        # Also allow direct download if admin is logged in
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
     customers = customer_service.get_all_customers_for_export(
