@@ -331,8 +331,14 @@ def test_dashboard_reordered_columns_and_pagination():
     )
     cookies = login_res.cookies
 
-    # Fetch page with page_size=10
-    resp = client.get("/dashboard?page=1&page_size=10", cookies=cookies)
+    # 1. Verify "Customer Records Overview" is removed from /dashboard
+    dash_resp = client.get("/dashboard", cookies=cookies)
+    assert dash_resp.status_code == 200
+    assert "Customer Records Overview" not in dash_resp.text
+    assert "Customer Records Directory" in dash_resp.text
+
+    # 2. Verify column headings and pagination on dedicated /customers page
+    resp = client.get("/customers?page=1&page_size=10", cookies=cookies)
     assert resp.status_code == 200
     html = resp.text
 
@@ -345,7 +351,7 @@ def test_dashboard_reordered_columns_and_pagination():
     assert "Showing" in html
     assert "Rows:" in html
     assert "name=\"page_size\"" in html
-    print("✓ Dashboard column ordering and pagination controls verified")
+    print("✓ Customer Records Overview removed from dashboard; customer columns and pagination verified on /customers")
 
 def test_source_filter_shows_only_users():
     test_user = get_or_create_test_user()
@@ -354,14 +360,14 @@ def test_source_filter_shows_only_users():
     sources = customer_service.get_unique_sources()
     assert test_user.username in sources
 
-    # Check dashboard HTML has 'All Users' and contains the test_user
+    # Check /customers HTML has 'All Users' and contains the test_user
     login_res = client.post(
         "/login",
         data={"username": settings.ADMIN_USERNAME, "password": settings.ADMIN_PASSWORD},
         follow_redirects=False
     )
     cookies = login_res.cookies
-    resp = client.get("/dashboard", cookies=cookies)
+    resp = client.get("/customers", cookies=cookies)
     assert resp.status_code == 200
     assert "All Users" in resp.text
     assert f">{test_user.username}</option>" in resp.text
