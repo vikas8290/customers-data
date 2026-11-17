@@ -12,6 +12,8 @@ def doc_to_customer(doc: dict[str, Any]) -> CustomerInDB:
     # Map stored 'from' to 'from_source' or alias
     if "from" in doc_copy:
         doc_copy["from_source"] = doc_copy.get("from")
+    if doc_copy.get("profile") in ("", "null", "None", "-"):
+        doc_copy["profile"] = None
     return CustomerInDB(**doc_copy)
 
 def create_customer(
@@ -87,8 +89,11 @@ def update_customer(customer_id: str, data: CustomerUpdate) -> Optional[Customer
     for key, value in data.model_dump(exclude_unset=True).items():
         if key == "from_source":
             update_data["from"] = value
-        elif value is not None:
-            update_data[key] = value.strip() if isinstance(value, str) else value
+        elif isinstance(value, str):
+            val_clean = value.strip()
+            update_data[key] = val_clean if val_clean else None
+        else:
+            update_data[key] = value
             
     if not update_data:
         return get_customer_by_id(customer_id)

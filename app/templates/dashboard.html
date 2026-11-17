@@ -352,12 +352,26 @@
                             <!-- 1. Name & Profile (First Column) -->
                             <td class="py-3.5 px-4">
                                 <div class="flex items-center gap-3">
+                                    {% if c.profile and (c.profile.startswith('http://') or c.profile.startswith('https://') or c.profile.startswith('data:image/')) %}
+                                    <div class="w-9 h-9 rounded-xl overflow-hidden shrink-0 border border-slate-200 shadow-sm relative bg-slate-100 flex items-center justify-center">
+                                        <img
+                                            src="{{ c.profile }}"
+                                            alt="{{ c.name or c.phone }}"
+                                            class="w-full h-full object-cover"
+                                            onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');"
+                                        >
+                                        <div class="hidden w-full h-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold flex items-center justify-center text-xs uppercase">
+                                            {{ (c.name[0] if c.name else c.phone[-2:]) }}
+                                        </div>
+                                    </div>
+                                    {% else %}
                                     <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold flex items-center justify-center text-xs uppercase shrink-0 shadow-sm shadow-blue-500/20">
                                         {{ (c.name[0] if c.name else c.phone[-2:]) }}
                                     </div>
+                                    {% endif %}
                                     <div>
                                         <div class="font-bold text-slate-900 text-sm">{{ c.name or '-' }}</div>
-                                        {% if c.profile %}
+                                        {% if c.profile and not (c.profile.startswith('http://') or c.profile.startswith('https://') or c.profile.startswith('data:image/')) %}
                                         <div class="text-xs text-slate-400 truncate max-w-[170px]" title="{{ c.profile }}">
                                             {{ c.profile }}
                                         </div>

@@ -85,12 +85,34 @@ class CustomerBase(BaseModel):
     def validate_phone(cls, v: str) -> str:
         return normalize_indian_phone(v)
 
+    @field_validator("profile", mode="before")
+    @classmethod
+    def clean_profile(cls, v: Any) -> Optional[str]:
+        if v is None:
+            return None
+        v_str = str(v).strip()
+        if not v_str or v_str.lower() in ("null", "none", "undefined", "n/a", "-", ""):
+            return None
+        return v_str
+
+    @field_validator("name", "address", "landmark", "city", "state", "pincode", mode="before")
+    @classmethod
+    def clean_optional_strings(cls, v: Any) -> Optional[str]:
+        if v is None:
+            return None
+        v_str = str(v).strip()
+        if not v_str or v_str.lower() in ("null", "none", "undefined"):
+            return None
+        return v_str
+
     @field_validator("email")
     @classmethod
     def clean_email(cls, v: Optional[str]) -> Optional[str]:
         if v:
             v = v.strip().lower()
-            return v if v else None
+            if not v or v in ("null", "none"):
+                return None
+            return v
         return None
 
 class CustomerCreate(CustomerBase):
@@ -140,6 +162,36 @@ class CustomerUpdate(BaseModel):
     def validate_phone(cls, v: Optional[str]) -> Optional[str]:
         if v is not None and str(v).strip():
             return normalize_indian_phone(v)
+        return None
+
+    @field_validator("profile", mode="before")
+    @classmethod
+    def clean_profile(cls, v: Any) -> Optional[str]:
+        if v is None:
+            return None
+        v_str = str(v).strip()
+        if not v_str or v_str.lower() in ("null", "none", "undefined", "n/a", "-", ""):
+            return None
+        return v_str
+
+    @field_validator("name", "address", "landmark", "city", "state", "pincode", mode="before")
+    @classmethod
+    def clean_optional_strings(cls, v: Any) -> Optional[str]:
+        if v is None:
+            return None
+        v_str = str(v).strip()
+        if not v_str or v_str.lower() in ("null", "none", "undefined"):
+            return None
+        return v_str
+
+    @field_validator("email")
+    @classmethod
+    def clean_email(cls, v: Optional[str]) -> Optional[str]:
+        if v:
+            v = v.strip().lower()
+            if not v or v in ("null", "none"):
+                return None
+            return v
         return None
 
 class CustomerInDB(CustomerBase):

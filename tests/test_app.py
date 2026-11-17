@@ -413,4 +413,40 @@ def test_dedicated_customers_page_and_searchable_selects():
     assert "All States" in html
     print("✓ Dedicated /customers page with searchable selects verified")
 
+def test_profile_not_available_null_sent():
+    test_user = get_or_create_test_user()
+    valid_sk = settings.SECRET_KEY
+    valid_ak = test_user.api_key
+
+    # 1. Profile omitted -> response has "profile": null
+    random_suffix1 = str(int(time.time() * 100))[-8:]
+    res1 = client.post(
+        "/api/customers",
+        headers={"X-Secret-Key": valid_sk, "X-API-Key": valid_ak},
+        json={"phone": f"95{random_suffix1}", "name": "No Profile User"}
+    )
+    assert res1.status_code == 201
+    assert res1.json()["data"]["profile"] is None
+
+    # 2. Profile sent as empty string "" -> response has "profile": null
+    random_suffix2 = str(int(time.time() * 100) + 1)[-8:]
+    res2 = client.post(
+        "/api/customers",
+        headers={"X-Secret-Key": valid_sk, "X-API-Key": valid_ak},
+        json={"phone": f"95{random_suffix2}", "name": "Empty Profile User", "profile": ""}
+    )
+    assert res2.status_code == 201
+    assert res2.json()["data"]["profile"] is None
+
+    # 3. Profile sent as string "null" -> response has "profile": null
+    random_suffix3 = str(int(time.time() * 100) + 2)[-8:]
+    res3 = client.post(
+        "/api/customers",
+        headers={"X-Secret-Key": valid_sk, "X-API-Key": valid_ak},
+        json={"phone": f"95{random_suffix3}", "name": "String Null Profile User", "profile": "null"}
+    )
+    assert res3.status_code == 201
+    assert res3.json()["data"]["profile"] is None
+    print("✓ Profile image not available verified to strictly return null")
+
 print("All tests defined!")
