@@ -75,16 +75,38 @@ def dashboard(
     if not is_admin_authenticated(request):
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
-    items, total = customer_service.list_customers(
-        search=search,
-        source=source,
-        city=city,
-        page=page,
-        page_size=page_size,
-    )
-    
-    stats = customer_service.get_dashboard_stats()
-    unique_sources = customer_service.get_unique_sources()
+    db_error = error
+    items, total = [], 0
+    stats = {
+        "total_customers": 0,
+        "today_count": 0,
+        "this_week_count": 0,
+        "this_month_count": 0,
+        "sources_breakdown": {},
+        "top_cities": [],
+    }
+    unique_sources = []
+
+    try:
+        items, total = customer_service.list_customers(
+            search=search,
+            source=source,
+            city=city,
+            page=page,
+            page_size=page_size,
+        )
+        stats = customer_service.get_dashboard_stats()
+        unique_sources = customer_service.get_unique_sources()
+    except Exception as e:
+        err_msg = str(e)
+        if "SSL handshake failed" in err_msg or "ServerSelectionTimeoutError" in err_msg or "TLSV1_ALERT" in err_msg:
+            db_error = (
+                "MongoDB Atlas Connection Blocked: Your MongoDB Atlas cluster is not allowing connections from Render's IP address. "
+                "Please go to MongoDB Atlas Dashboard -> Network Access -> Add IP Address -> Select 'Allow Access from Anywhere' (0.0.0.0/0)."
+            )
+        else:
+            db_error = f"Database error: {err_msg}"
+
     total_pages = (total + page_size - 1) // page_size if total > 0 else 1
 
     return templates.TemplateResponse(
@@ -103,7 +125,7 @@ def dashboard(
             "source_filter": source or "",
             "city_filter": city or "",
             "msg": msg,
-            "error": error,
+            "error": db_error,
         }
     )
 

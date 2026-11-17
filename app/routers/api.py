@@ -88,11 +88,23 @@ async def collect_customer(request: Request):
         client_ip = request.headers["x-forwarded-for"].split(",")[0].strip()
     user_agent = request.headers.get("user-agent")
 
-    created = customer_service.create_customer(
-        data=data,
-        ip_address=client_ip,
-        user_agent=user_agent
-    )
+    try:
+        created = customer_service.create_customer(
+            data=data,
+            ip_address=client_ip,
+            user_agent=user_agent
+        )
+    except Exception as e:
+        err_msg = str(e)
+        if "SSL handshake failed" in err_msg or "ServerSelectionTimeoutError" in err_msg or "TLSV1_ALERT" in err_msg:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database connection failed: MongoDB Atlas IP whitelist blocking Render. Please allow 0.0.0.0/0 in MongoDB Atlas Network Access."
+            )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {err_msg}"
+        )
 
     return CustomerResponse(
         success=True,

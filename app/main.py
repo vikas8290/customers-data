@@ -23,7 +23,10 @@ logger = logging.getLogger("app")
 async def lifespan(app: FastAPI):
     # Startup: Connect to MongoDB Atlas
     logger.info("Initializing application and connecting to MongoDB...")
-    db_manager.connect()
+    try:
+        db_manager.connect()
+    except Exception as e:
+        logger.error(f"Startup MongoDB connection attempt failed: {e}. Will retry on requests.")
     yield
     # Shutdown: Clean up connections
     logger.info("Shutting down application...")

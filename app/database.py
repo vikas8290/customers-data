@@ -1,4 +1,5 @@
 import logging
+import certifi
 from pymongo import MongoClient, DESCENDING
 from pymongo.collection import Collection
 from pymongo.database import Database
@@ -13,15 +14,21 @@ class DatabaseManager:
     def connect(self):
         if self.client is None:
             logger.info("Connecting to MongoDB Atlas...")
-            self.client = MongoClient(
-                settings.MONGO_URI,
-                serverSelectionTimeoutMS=5000,
-                connectTimeoutMS=10000,
-            )
-            self.db = self.client[settings.DATABASE_NAME]
-            # Ensure indexes
-            self._ensure_indexes()
-            logger.info(f"Connected to MongoDB database: {settings.DATABASE_NAME}")
+            try:
+                self.client = MongoClient(
+                    settings.MONGO_URI,
+                    tlsCAFile=certifi.where(),
+                    serverSelectionTimeoutMS=7000,
+                    connectTimeoutMS=10000,
+                    socketTimeoutMS=15000,
+                )
+                self.db = self.client[settings.DATABASE_NAME]
+                # Test connection and create indexes
+                self._ensure_indexes()
+                logger.info(f"Connected to MongoDB database: {settings.DATABASE_NAME}")
+            except Exception as e:
+                logger.error(f"Failed to connect to MongoDB Atlas: {e}")
+                raise
 
     def _ensure_indexes(self):
         try:
