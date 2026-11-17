@@ -102,6 +102,56 @@ def delete_user(user_id: str) -> bool:
     res = col.delete_one({"_id": obj_id})
     return res.deleted_count > 0
 
+def update_user(
+    user_id: str,
+    username: Optional[str] = None,
+    email: Optional[str] = None,
+    notes: Optional[str] = None,
+    is_active: Optional[bool] = None,
+) -> Optional[UserInDB]:
+    """Update user / platform details with duplicate name prevention."""
+    try:
+        obj_id = ObjectId(user_id)
+    except Exception:
+        return None
+    
+    col = get_users_collection()
+    user_doc = col.find_one({"_id": obj_id})
+    if not user_doc:
+        return None
+        
+    old_username = user_doc.get("username")
+    update_data: dict[str, Any] = {}
+
+    if username and username.strip():
+        new_uname = username.strip()
+        if new_uname.lower() != (old_username or "").lower():
+            existing = col.find_one({
+                "username": {"$regex": f"^{new_uname}$", "$options": "i"},
+                "_id": {"$ne": obj_id}
+            })
+            if existing:
+                raise ValueError(f"User / Platform '{new_uname}' already exists.")
+            update_data["username"] = new_uname
+            # Sync leads to the updated platform name
+            cust_col = get_customers_collection()
+            cust_col.update_many({"from": old_username}, {"$set": {"from": new_uname}})
+
+    if email is not None:
+        update_data["email"] = email.strip().lower() if email.strip() else None
+
+    if notes is not None:
+        update_data["notes"] = notes.strip() if notes.strip() else None
+
+    if is_active is not None:
+        update_data["is_active"] = bool(is_active)
+
+    if not update_data:
+        return get_user_by_id(user_id)
+
+    col.update_one({"_id": obj_id}, {"$set": update_data})
+    return get_user_by_id(user_id)
+
 def regenerate_api_key(user_id: str) -> Optional[str]:
     """Regenerate a new API key for the user."""
     try:

@@ -10,6 +10,7 @@ from app.models import (
     CustomerInDB,
     DashboardStats,
     UserCreate,
+    UserUpdate,
     UserResponse,
     UserListResponse,
 )
@@ -320,6 +321,27 @@ def api_list_users(auth: dict = Depends(verify_admin_access)):
     """List all registered users, their API keys, and collected lead counts."""
     users = user_service.list_users()
     return UserListResponse(success=True, total=len(users), users=users)
+
+@router.put(
+    "/admin/users/{user_id}",
+    response_model=UserResponse,
+    summary="Admin: Update User / Platform Details (Requires SECRET_KEY)"
+)
+def api_update_user(user_id: str, data: UserUpdate, auth: dict = Depends(verify_admin_access)):
+    """Admin updates platform username, email, notes, or active status."""
+    try:
+        user = user_service.update_user(
+            user_id=user_id,
+            username=data.username,
+            email=data.email,
+            notes=data.notes,
+            is_active=data.is_active,
+        )
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+        return UserResponse(success=True, message="User updated successfully", data=user)
+    except ValueError as ve:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
 
 @router.delete(
     "/admin/users/{user_id}",

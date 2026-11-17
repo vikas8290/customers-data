@@ -144,6 +144,14 @@ class UserCreate(BaseModel):
             raise ValueError("User/Platform name cannot be empty.")
         return cleaned
 
+class UserUpdate(BaseModel):
+    username: Optional[str] = None
+    email: Optional[str] = None
+    notes: Optional[str] = None
+    is_active: Optional[bool] = None
+
+    model_config = ConfigDict(extra="ignore")
+
 class UserInDB(BaseModel):
     id: str
     username: str

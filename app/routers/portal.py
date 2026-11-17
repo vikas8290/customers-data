@@ -1,5 +1,5 @@
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from urllib.parse import quote_plus
 from fastapi import APIRouter, Request, Form, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
@@ -12,6 +12,21 @@ from app.models import CustomerCreate, CustomerUpdate, UserCreate
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+
+def format_kolkata_time(dt: Optional[datetime]) -> str:
+    """Format datetime in Asia/Kolkata timezone (UTC+05:30) with 12-hour AM/PM format."""
+    if not dt:
+        return "-"
+    try:
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        kolkata_tz = timezone(timedelta(hours=5, minutes=30))
+        dt_kolkata = dt.astimezone(kolkata_tz)
+        return dt_kolkata.strftime("%d %b %Y, %I:%M %p")
+    except Exception:
+        return str(dt)
+
+templates.env.filters["to_kolkata"] = format_kolkata_time
 
 router = APIRouter(tags=["Admin Portal"])
 
@@ -123,6 +138,17 @@ def dashboard(
 
     total_pages = (total + page_size - 1) // page_size if total > 0 else 1
 
+    # Generate pagination window
+    if total_pages <= 7:
+        pagination_pages = list(range(1, total_pages + 1))
+    else:
+        if page <= 4:
+            pagination_pages = [1, 2, 3, 4, 5, "...", total_pages]
+        elif page >= total_pages - 3:
+            pagination_pages = [1, "...", total_pages - 4, total_pages - 3, total_pages - 2, total_pages - 1, total_pages]
+        else:
+            pagination_pages = [1, "...", page - 1, page, page + 1, "...", total_pages]
+
     return templates.TemplateResponse(
         request=request,
         name="dashboard.html",
@@ -133,6 +159,7 @@ def dashboard(
             "page": page,
             "page_size": page_size,
             "total_pages": total_pages,
+            "pagination_pages": pagination_pages,
             "stats": stats,
             "unique_sources": unique_sources,
             "unique_cities": unique_cities,
@@ -316,6 +343,35 @@ def portal_regenerate_user_key(request: Request, user_id: str, redirect_to: Opti
     sep = "&" if "?" in dest else "?"
     new_key = user_service.regenerate_api_key(user_id)
     return RedirectResponse(url=f"{dest}{sep}msg=key_regenerated&new_key={new_key}", status_code=status.HTTP_302_FOUND)
+
+@router.post("/portal/user/{user_id}/edit", include_in_schema=False)
+def portal_edit_user(
+    request: Request,
+    user_id: str,
+    username: str = Form(...),
+    email: Optional[str] = Form(None),
+    notes: Optional[str] = Form(None),
+    is_active: Optional[bool] = Form(True),
+    redirect_to: Optional[str] = Form("/users"),
+):
+    """Admin updates user/platform details."""
+    if not is_admin_authenticated(request):
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+
+    dest = redirect_to or "/users"
+    sep = "&" if "?" in dest else "?"
+    try:
+        user_service.update_user(
+            user_id=user_id,
+            username=username,
+            email=email,
+            notes=notes,
+            is_active=is_active,
+        )
+        return RedirectResponse(url=f"{dest}{sep}msg=user_updated", status_code=status.HTTP_302_FOUND)
+    except Exception as e:
+        err_text = quote_plus(str(e))
+        return RedirectResponse(url=f"{dest}{sep}error={err_text}", status_code=status.HTTP_302_FOUND)
 
 @router.get("/export/excel", summary="Export Customers to Excel Spreadsheet")
 def export_excel(

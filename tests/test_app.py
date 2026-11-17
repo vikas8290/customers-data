@@ -256,4 +256,95 @@ def test_dashboard_charts_and_city_state_filters():
     assert "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" in api_excel_res.headers["content-type"]
     print("✓ API Excel export according to filters passed successfully")
 
+def test_kolkata_timezone_formatting():
+    from datetime import datetime, timezone
+    from app.routers.portal import format_kolkata_time
+
+    # UTC 2026-11-17 12:00:00 is 17:30 (5:30 PM) in Asia/Kolkata
+    dt_utc = datetime(2026, 11, 17, 12, 0, 0, tzinfo=timezone.utc)
+    formatted = format_kolkata_time(dt_utc)
+    assert "17 Nov 2026" in formatted
+    assert "05:30 PM" in formatted
+
+    # None check
+    assert format_kolkata_time(None) == "-"
+    print("✓ Asia/Kolkata 12-hour AM/PM formatting verified")
+
+def test_user_update_and_lead_sync():
+    test_user = get_or_create_test_user()
+    user_id = test_user.id
+    new_username = f"Renamed_{int(time.time())}"
+
+    # 1. Update user via service
+    updated = user_service.update_user(
+        user_id=user_id,
+        username=new_username,
+        email="updated@platform.com",
+        notes="Updated notes",
+        is_active=True,
+    )
+    assert updated is not None
+    assert updated.username == new_username
+    assert updated.email == "updated@platform.com"
+    assert updated.notes == "Updated notes"
+
+    # 2. Portal user edit endpoint
+    login_res = client.post(
+        "/login",
+        data={"username": settings.ADMIN_USERNAME, "password": settings.ADMIN_PASSWORD},
+        follow_redirects=False
+    )
+    cookies = login_res.cookies
+
+    portal_edit_res = client.post(
+        f"/portal/user/{user_id}/edit",
+        data={
+            "username": f"PortalUser_{int(time.time())}",
+            "email": "portal@edit.com",
+            "notes": "Edited via portal",
+            "is_active": "true",
+            "redirect_to": "/users"
+        },
+        cookies=cookies,
+        follow_redirects=False
+    )
+    assert portal_edit_res.status_code == 302
+    assert "msg=user_updated" in portal_edit_res.headers["location"]
+
+    # 3. API user update endpoint with SECRET_KEY
+    api_update_res = client.put(
+        f"/api/admin/users/{user_id}",
+        headers={"X-Secret-Key": settings.SECRET_KEY},
+        json={
+            "notes": "API updated notes"
+        }
+    )
+    assert api_update_res.status_code == 200
+    assert api_update_res.json()["data"]["notes"] == "API updated notes"
+    print("✓ User edit in service, portal and API verified")
+
+def test_dashboard_reordered_columns_and_pagination():
+    login_res = client.post(
+        "/login",
+        data={"username": settings.ADMIN_USERNAME, "password": settings.ADMIN_PASSWORD},
+        follow_redirects=False
+    )
+    cookies = login_res.cookies
+
+    # Fetch page with page_size=10
+    resp = client.get("/dashboard?page=1&page_size=10", cookies=cookies)
+    assert resp.status_code == 200
+    html = resp.text
+
+    # Verify column headings
+    assert "Name / Profile" in html
+    assert "Phone &amp; Email" in html or "Phone & Email" in html
+    assert "Source &amp; Date (IST)" in html or "Source & Date (IST)" in html
+
+    # Verify pagination elements
+    assert "Showing" in html
+    assert "Rows:" in html
+    assert "name=\"page_size\"" in html
+    print("✓ Dashboard column ordering and pagination controls verified")
+
 print("All tests defined!")
