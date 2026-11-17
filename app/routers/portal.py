@@ -220,44 +220,87 @@ def portal_delete_customer(request: Request, customer_id: str):
 
 # ================= ADMIN USER / PLATFORM REGISTRATION ROUTES =================
 
+@router.get("/users", response_class=HTMLResponse, include_in_schema=False)
+def users_page(
+    request: Request,
+    msg: Optional[str] = None,
+    error: Optional[str] = None,
+    new_user: Optional[str] = None,
+    new_key: Optional[str] = None,
+):
+    """Render the dedicated Platform Users & API Keys management page."""
+    if not is_admin_authenticated(request):
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+
+    users = []
+    db_error = error
+    try:
+        users = user_service.list_users()
+    except Exception as e:
+        db_error = f"Database error fetching users: {str(e)}"
+
+    total_leads = sum(u.leads_count for u in users)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="users.html",
+        context={
+            "user": request.session.get("admin_user", "Admin"),
+            "users": users,
+            "total_users": len(users),
+            "total_leads": total_leads,
+            "msg": msg,
+            "error": db_error,
+            "new_user": new_user,
+            "new_key": new_key,
+        }
+    )
+
 @router.post("/portal/user/add", include_in_schema=False)
 def portal_add_user(
     request: Request,
     username: str = Form(...),
     email: Optional[str] = Form(None),
     notes: Optional[str] = Form(None),
+    redirect_to: Optional[str] = Form("/users"),
 ):
     """Admin registers a user/platform and generates their API Key."""
     if not is_admin_authenticated(request):
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
+    dest = redirect_to or "/users"
+    sep = "&" if "?" in dest else "?"
     try:
         data = UserCreate(username=username, email=email or None, notes=notes or None)
         new_user = user_service.create_user(data)
         return RedirectResponse(
-            url=f"/dashboard?msg=user_added&new_user={new_user.username}&new_key={new_user.api_key}",
+            url=f"{dest}{sep}msg=user_added&new_user={new_user.username}&new_key={new_user.api_key}",
             status_code=status.HTTP_302_FOUND
         )
     except Exception as e:
-        return RedirectResponse(url=f"/dashboard?error={str(e)}", status_code=status.HTTP_302_FOUND)
+        return RedirectResponse(url=f"{dest}{sep}error={str(e)}", status_code=status.HTTP_302_FOUND)
 
 @router.post("/portal/user/{user_id}/delete", include_in_schema=False)
-def portal_delete_user(request: Request, user_id: str):
+def portal_delete_user(request: Request, user_id: str, redirect_to: Optional[str] = Form("/users")):
     """Admin deletes user and revokes their API Key."""
     if not is_admin_authenticated(request):
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
+    dest = redirect_to or "/users"
+    sep = "&" if "?" in dest else "?"
     user_service.delete_user(user_id)
-    return RedirectResponse(url="/dashboard?msg=user_deleted", status_code=status.HTTP_302_FOUND)
+    return RedirectResponse(url=f"{dest}{sep}msg=user_deleted", status_code=status.HTTP_302_FOUND)
 
 @router.post("/portal/user/{user_id}/regenerate-key", include_in_schema=False)
-def portal_regenerate_user_key(request: Request, user_id: str):
+def portal_regenerate_user_key(request: Request, user_id: str, redirect_to: Optional[str] = Form("/users")):
     """Admin regenerates a new API Key for a user."""
     if not is_admin_authenticated(request):
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
+    dest = redirect_to or "/users"
+    sep = "&" if "?" in dest else "?"
     new_key = user_service.regenerate_api_key(user_id)
-    return RedirectResponse(url=f"/dashboard?msg=key_regenerated&new_key={new_key}", status_code=status.HTTP_302_FOUND)
+    return RedirectResponse(url=f"{dest}{sep}msg=key_regenerated&new_key={new_key}", status_code=status.HTTP_302_FOUND)
 
 @router.get("/export/excel", summary="Export Customers to Excel Spreadsheet")
 def export_excel(

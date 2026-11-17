@@ -185,17 +185,16 @@
 
             <!-- Buttons: Export to Excel & Add Customer & API Integration -->
             <div class="flex flex-wrap items-center gap-2.5">
-                <!-- Platform Users & API Keys Button -->
-                <button
-                    type="button"
-                    onclick="openUsersModal()"
+                <!-- Platform Users & API Keys Page Link -->
+                <a
+                    href="/users"
                     class="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-xl transition"
                     title="Manage Users & API Keys"
                 >
                     <i data-lucide="key" class="w-4 h-4"></i>
                     <span>Users & API Keys</span>
                     <span class="px-1.5 py-0.5 rounded-full text-xs bg-violet-200 text-violet-800 font-bold">{{ users | length }}</span>
-                </button>
+                </a>
 
                 <!-- Website API Code Modal Trigger -->
                 <button

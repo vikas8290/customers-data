@@ -134,4 +134,11 @@ def test_login_flow_and_dashboard():
     assert export_resp.status_code == 200
     assert "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" in export_resp.headers["content-type"]
 
+    # 5. Access dedicated /users page with session cookies -> 200 OK
+    users_auth = client.get("/users", cookies=cookies)
+    assert users_auth.status_code == 200
+    assert "Platform Users & API Keys" in users_auth.text
+    assert "Register New Platform / User" in users_auth.text
+    print("✓ Dedicated /users page loads successfully with 200 OK")
+
 print("All tests defined!")
