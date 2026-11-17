@@ -1,0 +1,226 @@
+from typing import Optional
+from datetime import datetime
+from fastapi import APIRouter, Request, Form, Depends, HTTPException, status
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
+from fastapi.templating import Jinja2Templates
+from pathlib import Path
+
+from app.auth import authenticate_admin, is_admin_authenticated
+from app.services import customer_service, excel_service
+from app.models import CustomerCreate, CustomerUpdate
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+
+router = APIRouter(tags=["Admin Portal"])
+
+@router.get("/", include_in_schema=False)
+def root(request: Request):
+    """Root redirect to dashboard if logged in, else to login page."""
+    if is_admin_authenticated(request):
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
+    return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+
+@router.get("/login", response_class=HTMLResponse, include_in_schema=False)
+def login_page(request: Request, error: Optional[str] = None):
+    """Render Admin Login page."""
+    if is_admin_authenticated(request):
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
+    return templates.TemplateResponse(
+        request=request,
+        name="login.html",
+        context={"error": error}
+    )
+
+@router.post("/login", response_class=HTMLResponse, include_in_schema=False)
+def handle_login(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...)
+):
+    """Process admin credentials and establish session."""
+    if authenticate_admin(username, password):
+        request.session["admin_logged_in"] = True
+        request.session["admin_user"] = username
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
+    
+    return templates.TemplateResponse(
+        request=request,
+        name="login.html",
+        context={
+            "error": "Invalid username or password. Please try again.",
+            "username": username,
+        },
+        status_code=status.HTTP_401_UNAUTHORIZED
+    )
+
+@router.get("/logout", include_in_schema=False)
+def logout(request: Request):
+    """Clear session and log out."""
+    request.session.clear()
+    return RedirectResponse(url="/login?msg=logged_out", status_code=status.HTTP_302_FOUND)
+
+@router.get("/dashboard", response_class=HTMLResponse, include_in_schema=False)
+def dashboard(
+    request: Request,
+    search: Optional[str] = None,
+    source: Optional[str] = None,
+    city: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 20,
+    msg: Optional[str] = None,
+    error: Optional[str] = None,
+):
+    """Render the customer management dashboard with search, filters, and metrics."""
+    if not is_admin_authenticated(request):
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+
+    items, total = customer_service.list_customers(
+        search=search,
+        source=source,
+        city=city,
+        page=page,
+        page_size=page_size,
+    )
+    
+    stats = customer_service.get_dashboard_stats()
+    unique_sources = customer_service.get_unique_sources()
+    total_pages = (total + page_size - 1) // page_size if total > 0 else 1
+
+    return templates.TemplateResponse(
+        request=request,
+        name="dashboard.html",
+        context={
+            "user": request.session.get("admin_user", "Admin"),
+            "customers": items,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": total_pages,
+            "stats": stats,
+            "unique_sources": unique_sources,
+            "search": search or "",
+            "source_filter": source or "",
+            "city_filter": city or "",
+            "msg": msg,
+            "error": error,
+        }
+    )
+
+@router.post("/portal/customer/add", include_in_schema=False)
+def portal_add_customer(
+    request: Request,
+    phone: str = Form(...),
+    name: Optional[str] = Form(None),
+    email: Optional[str] = Form(None),
+    profile: Optional[str] = Form(None),
+    address: Optional[str] = Form(None),
+    landmark: Optional[str] = Form(None),
+    pincode: Optional[str] = Form(None),
+    city: Optional[str] = Form(None),
+    state: Optional[str] = Form(None),
+    from_source: Optional[str] = Form("portal"),
+):
+    """Add a customer directly through the admin portal."""
+    if not is_admin_authenticated(request):
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+
+    try:
+        data = CustomerCreate(
+            phone=phone,
+            name=name or None,
+            email=email or None,
+            profile=profile or None,
+            address=address or None,
+            landmark=landmark or None,
+            pincode=pincode or None,
+            city=city or None,
+            state=state or None,
+            from_source=from_source or "portal"
+        )
+        customer_service.create_customer(data, ip_address="admin-portal")
+        return RedirectResponse(url="/dashboard?msg=added", status_code=status.HTTP_302_FOUND)
+    except Exception as e:
+        return RedirectResponse(url=f"/dashboard?error={str(e)}", status_code=status.HTTP_302_FOUND)
+
+@router.post("/portal/customer/{customer_id}/edit", include_in_schema=False)
+def portal_edit_customer(
+    request: Request,
+    customer_id: str,
+    phone: str = Form(...),
+    name: Optional[str] = Form(None),
+    email: Optional[str] = Form(None),
+    profile: Optional[str] = Form(None),
+    address: Optional[str] = Form(None),
+    landmark: Optional[str] = Form(None),
+    pincode: Optional[str] = Form(None),
+    city: Optional[str] = Form(None),
+    state: Optional[str] = Form(None),
+    from_source: Optional[str] = Form(None),
+):
+    """Edit customer details from the portal."""
+    if not is_admin_authenticated(request):
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+
+    try:
+        data = CustomerUpdate(
+            phone=phone,
+            name=name,
+            email=email,
+            profile=profile,
+            address=address,
+            landmark=landmark,
+            pincode=pincode,
+            city=city,
+            state=state,
+            from_source=from_source,
+        )
+        customer_service.update_customer(customer_id, data)
+        return RedirectResponse(url="/dashboard?msg=updated", status_code=status.HTTP_302_FOUND)
+    except Exception as e:
+        return RedirectResponse(url=f"/dashboard?error={str(e)}", status_code=status.HTTP_302_FOUND)
+
+@router.post("/portal/customer/{customer_id}/delete", include_in_schema=False)
+def portal_delete_customer(request: Request, customer_id: str):
+    """Delete customer record from the portal."""
+    if not is_admin_authenticated(request):
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+
+    customer_service.delete_customer(customer_id)
+    return RedirectResponse(url="/dashboard?msg=deleted", status_code=status.HTTP_302_FOUND)
+
+@router.get("/export/excel", summary="Export Customers to Excel Spreadsheet")
+def export_excel(
+    request: Request,
+    search: Optional[str] = None,
+    source: Optional[str] = None,
+    city: Optional[str] = None,
+    state: Optional[str] = None,
+):
+    """
+    Download an Excel file (.xlsx) containing all or filtered customer records.
+    Accessible from the portal or directly with admin session.
+    """
+    if not is_admin_authenticated(request):
+        # Also allow direct download if admin is logged in
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+
+    customers = customer_service.get_all_customers_for_export(
+        search=search,
+        source=source,
+        city=city,
+        state=state,
+    )
+
+    buffer = excel_service.generate_customers_excel(customers)
+    
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"customers_data_export_{timestamp}.xlsx"
+
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        }
+    )

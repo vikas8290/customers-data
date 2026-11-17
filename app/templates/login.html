@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Login - CustomerHub{% endblock %}
+
+{% block content %}
+<div class="min-h-[calc(100vh-12rem)] flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8">
+    <div class="w-full max-w-md">
+        <!-- Logo / Icon -->
+        <div class="text-center mb-8">
+            <div class="inline-flex w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-700 to-indigo-500 items-center justify-center text-white shadow-xl shadow-blue-500/20 mb-4">
+                <i data-lucide="shield-check" class="w-9 h-9"></i>
+            </div>
+            <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Admin Portal Login</h2>
+            <p class="mt-2 text-sm text-slate-500">Sign in to view collected customer data and export to Excel</p>
+        </div>
+
+        <!-- Card -->
+        <div class="bg-white py-8 px-6 sm:px-10 shadow-xl shadow-slate-200/50 rounded-2xl border border-slate-100">
+            {% if error %}
+            <div class="mb-5 bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-xl text-sm flex items-start gap-3">
+                <i data-lucide="alert-circle" class="w-5 h-5 shrink-0 mt-0.5"></i>
+                <div>
+                    <span class="font-medium">Authentication Failed:</span>
+                    <p class="text-xs mt-0.5">{{ error }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if request.query_params.get("msg") == "logged_out" %}
+            <div class="mb-5 bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-xl text-sm flex items-center gap-3">
+                <i data-lucide="check-circle" class="w-5 h-5 shrink-0"></i>
+                <span>You have been successfully logged out.</span>
+            </div>
+            {% endif %}
+
+            <form action="/login" method="POST" class="space-y-5">
+                <!-- Username -->
+                <div>
+                    <label for="username" class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">
+                        Username
+                    </label>
+                    <div class="relative rounded-xl shadow-sm">
+                        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                            <i data-lucide="user" class="w-4 h-4"></i>
+                        </div>
+                        <input
+                            type="text"
+                            name="username"
+                            id="username"
+                            required
+                            value="{{ username or 'admin' }}"
+                            placeholder="Enter username"
+                            class="block w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                        >
+                    </div>
+                </div>
+
+                <!-- Password -->
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label for="password" class="block text-xs font-semibold uppercase tracking-wider text-slate-700">
+                            Password
+                        </label>
+                    </div>
+                    <div class="relative rounded-xl shadow-sm">
+                        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                            <i data-lucide="lock" class="w-4 h-4"></i>
+                        </div>
+                        <input
+                            type="password"
+                            name="password"
+                            id="password"
+                            required
+                            placeholder="Enter password"
+                            class="block w-full pl-10 pr-10 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                        >
+                        <button
+                            type="button"
+                            onclick="togglePasswordVisibility()"
+                            class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none"
+                            title="Show/hide password"
+                        >
+                            <i data-lucide="eye" id="eyeIcon" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div>
+                    <button
+                        type="submit"
+                        class="w-full flex justify-center items-center gap-2 py-2.5 px-4 rounded-xl shadow-md shadow-blue-500/20 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out cursor-pointer"
+                    >
+                        <i data-lucide="log-in" class="w-4 h-4"></i>
+                        <span>Sign In to Portal</span>
+                    </button>
+                </div>
+            </form>
+
+            <!-- Quick hint for user -->
+            <div class="mt-6 pt-5 border-t border-slate-100 text-center">
+                <div class="inline-flex items-center gap-1.5 text-xs text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200/60">
+                    <i data-lucide="key" class="w-3.5 h-3.5 text-blue-500"></i>
+                    <span>Default credentials: <strong>admin</strong> / <strong>admin123</strong></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function togglePasswordVisibility() {
+        const passwordInput = document.getElementById('password');
+        const eyeIcon = document.getElementById('eyeIcon');
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            eyeIcon.setAttribute('data-lucide', 'eye-off');
+        } else {
+            passwordInput.type = 'password';
+            eyeIcon.setAttribute('data-lucide', 'eye');
+        }
+        lucide.createIcons();
+    }
+</script>
+{% endblock %}
