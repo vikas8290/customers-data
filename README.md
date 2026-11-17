@@ -135,7 +135,15 @@ Open your browser:
 ### 1. Collect Customer Data (`POST /api/customers`)
 Any website, landing page, or frontend form can send customer data to this endpoint.
 
-#### Only `phone` is required; all other fields are optional!
+#### 🔒 Secret Key Authentication Required:
+To prevent unauthorized spam and protect customer data, all API endpoints require your configured `SECRET_KEY`.
+You can pass it in **any** of the following ways:
+- **Header**: `X-Secret-Key: <YOUR_SECRET_KEY>` *(Recommended)*
+- **Header**: `Authorization: Bearer <YOUR_SECRET_KEY>`
+- **Query Parameter**: `?secret_key=<YOUR_SECRET_KEY>`
+- **Request Body**: `{"secret_key": "<YOUR_SECRET_KEY>", "phone": "..."}`
+
+#### Only `phone` is required; all other customer fields are optional!
 
 #### A. JSON Request Example (JavaScript `fetch`)
 ```javascript
@@ -144,6 +152,7 @@ fetch('https://<your-render-domain>.onrender.com/api/customers', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
+    'X-Secret-Key': 'YOUR_SECRET_KEY' // REQUIRED
   },
   body: JSON.stringify({
     phone: "+91 9876543210",       // REQUIRED
@@ -167,6 +176,7 @@ fetch('https://<your-render-domain>.onrender.com/api/customers', {
 ```bash
 curl -X POST https://<your-render-domain>.onrender.com/api/customers \
   -H "Content-Type: application/json" \
+  -H "X-Secret-Key: YOUR_SECRET_KEY" \
   -d '{
     "phone": "9876543210",
     "name": "Rohan Patel",
@@ -181,6 +191,7 @@ curl -X POST https://<your-render-domain>.onrender.com/api/customers \
 ```bash
 curl -X POST https://<your-render-domain>.onrender.com/api/customers \
   -H "Content-Type: application/json" \
+  -H "X-Secret-Key: YOUR_SECRET_KEY" \
   -d '{"phone": "9998887776"}'
 ```
 
@@ -210,9 +221,12 @@ curl -X POST https://<your-render-domain>.onrender.com/api/customers \
 ---
 
 ### 2. Standard HTML Form Integration (No JavaScript Required)
-You can point any traditional HTML form directly to the API endpoint:
+You can point any traditional HTML form directly to the API endpoint and embed your `secret_key`:
 ```html
 <form action="https://<your-render-domain>.onrender.com/api/customers" method="POST">
+  <!-- Secret key protection -->
+  <input type="hidden" name="secret_key" value="YOUR_SECRET_KEY">
+  
   <input type="text" name="phone" required placeholder="Enter Phone Number *">
   <input type="text" name="name" placeholder="Full Name">
   <input type="email" name="email" placeholder="Email Address">
@@ -234,7 +248,8 @@ Query parameters:
 - `page_size`: Records per page (default: 20, max: 100)
 
 ```bash
-curl -X GET "https://<your-render-domain>.onrender.com/api/customers?page=1&page_size=20"
+curl -X GET "https://<your-render-domain>.onrender.com/api/customers?page=1&page_size=20" \
+  -H "X-Secret-Key: YOUR_SECRET_KEY"
 ```
 
 ---

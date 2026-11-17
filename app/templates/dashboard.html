@@ -752,12 +752,12 @@
 
         <div class="p-6 space-y-6 text-sm">
             <div>
-                <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">API Endpoint</p>
+                <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">API Endpoint (Requires SECRET_KEY)</p>
                 <div class="flex items-center gap-2 bg-slate-900 text-emerald-400 font-mono text-xs p-3 rounded-xl">
                     <span class="text-blue-400 font-bold">POST</span>
                     <span id="apiEndpointUrl">/api/customers</span>
                 </div>
-                <p class="text-xs text-slate-500 mt-1">CORS is enabled. Any frontend website can submit leads without CORS errors.</p>
+                <p class="text-xs text-slate-500 mt-1">CORS is enabled. Pass your configured <code>SECRET_KEY</code> via <code>X-Secret-Key</code> header, Bearer token, or <code>secret_key</code> parameter.</p>
             </div>
 
             <!-- JavaScript Fetch Example -->
@@ -773,7 +773,10 @@
 async function submitCustomerData() {
   const response = await fetch('/api/customers', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Secret-Key': 'YOUR_SECRET_KEY' // REQUIRED
+    },
     body: JSON.stringify({
       phone: "+91 9876543210", // REQUIRED
       name: "Rohan Sharma",
@@ -803,6 +806,7 @@ async function submitCustomerData() {
                 <pre id="curlSnippet" class="bg-slate-900 text-slate-100 font-mono text-xs p-4 rounded-xl overflow-x-auto leading-relaxed">
 curl -X POST https://your-app-url.onrender.com/api/customers \
   -H "Content-Type: application/json" \
+  -H "X-Secret-Key: YOUR_SECRET_KEY" \
   -d '{"phone": "9876543210", "name": "Aarav", "from": "landing-page"}'</pre>
             </div>
         </div>

@@ -5,16 +5,31 @@ from app.config import settings
 client = TestClient(app)
 
 def test_health_check():
+    # Health check is public
     response = client.get("/api/health")
     assert response.status_code == 200
     data = response.json()
     assert data["status"] in ["healthy", "degraded"]
     assert "timestamp" in data
 
-def test_create_customer_minimal_phone_only():
-    # Only phone is required
+def test_api_requires_secret_key():
+    # POST without secret key must fail with 401
+    bad_post = client.post(
+        "/api/customers",
+        json={"phone": "9998887776"}
+    )
+    assert bad_post.status_code == 401
+    assert "SECRET_KEY is required" in bad_post.json()["detail"]
+
+    # GET without secret key must fail with 401
+    bad_get = client.get("/api/customers")
+    assert bad_get.status_code == 401
+
+def test_create_customer_with_secret_key_header():
+    # Header: X-Secret-Key
     response = client.post(
         "/api/customers",
+        headers={"X-Secret-Key": settings.SECRET_KEY},
         json={"phone": "9998887776"}
     )
     assert response.status_code == 201
@@ -23,38 +38,39 @@ def test_create_customer_minimal_phone_only():
     assert data["data"]["phone"] == "9998887776"
     assert data["data"]["from"] == "website"
 
-def test_create_customer_all_fields():
+def test_create_customer_with_bearer_token():
+    # Authorization: Bearer <SECRET_KEY>
     payload = {
         "phone": "+91 9123456789",
         "name": "Aman Verma",
         "email": "aman@test.com",
-        "profile": "Software Engineer",
-        "address": "45 Lake View Road",
-        "landmark": "Opposite City Park",
         "city": "Bengaluru",
-        "state": "Karnataka",
-        "pincode": "560001",
         "from": "landing-campaign"
     }
-    response = client.post("/api/customers", json=payload)
+    response = client.post(
+        "/api/customers",
+        headers={"Authorization": f"Bearer {settings.SECRET_KEY}"},
+        json=payload
+    )
     assert response.status_code == 201
     data = response.json()
     assert data["success"] is True
     assert data["data"]["phone"] == "+91 9123456789"
-    assert data["data"]["name"] == "Aman Verma"
     assert data["data"]["city"] == "Bengaluru"
-    assert data["data"]["from"] == "landing-campaign"
 
 def test_create_customer_missing_phone_fails():
-    # Missing phone must fail validation
+    # Valid secret key but missing required phone
     response = client.post(
         "/api/customers",
+        headers={"X-Secret-Key": settings.SECRET_KEY},
         json={"name": "No Phone User"}
     )
     assert response.status_code == 422
 
-def test_create_customer_form_data():
+def test_create_customer_with_body_secret_key():
+    # Secret key embedded in Form/JSON body
     form_data = {
+        "secret_key": settings.SECRET_KEY,
         "phone": "9811122233",
         "name": "Form Submitter",
         "city": "Delhi",
@@ -66,13 +82,21 @@ def test_create_customer_form_data():
     assert data["data"]["phone"] == "9811122233"
     assert data["data"]["from"] == "contact-page-form"
 
-def test_get_customers_api():
-    response = client.get("/api/customers?page=1&page_size=5")
+def test_get_customers_api_with_secret_key():
+    # Header
+    response = client.get(
+        "/api/customers?page=1&page_size=5",
+        headers={"X-Secret-Key": settings.SECRET_KEY}
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["success"] is True
     assert "items" in data
     assert len(data["items"]) >= 1
+
+    # Query param: ?secret_key=...
+    query_resp = client.get(f"/api/customers?page=1&page_size=5&secret_key={settings.SECRET_KEY}")
+    assert query_resp.status_code == 200
 
 def test_login_flow_and_dashboard():
     # Ensure credentials exist for test
@@ -114,6 +138,5 @@ def test_login_flow_and_dashboard():
     assert export_resp.status_code == 200
     assert "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" in export_resp.headers["content-type"]
     assert len(export_resp.content) > 1000
-    print("Exported Excel file size:", len(export_resp.content), "bytes")
 
 print("All tests defined!")

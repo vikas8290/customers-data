@@ -1,6 +1,6 @@
 from typing import Optional
 from datetime import datetime
-from fastapi import APIRouter, Request, HTTPException, status, Query
+from fastapi import APIRouter, Request, HTTPException, status, Query, Depends
 from app.models import (
     CustomerCreate,
     CustomerUpdate,
@@ -11,12 +11,13 @@ from app.models import (
 )
 from app.services import customer_service
 from app.database import db_manager
+from app.auth import verify_api_secret_key
 
 router = APIRouter(prefix="/api", tags=["API Endpoints"])
 
 @router.get("/health", summary="Service & Database Health Check")
 def health_check():
-    """Verify that the API and MongoDB connection are healthy."""
+    """Verify that the API and MongoDB connection are healthy (Public health check)."""
     is_db_connected = db_manager.ping()
     return {
         "status": "healthy" if is_db_connected else "degraded",
@@ -28,24 +29,17 @@ def health_check():
     "/customers",
     response_model=CustomerResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Collect Customer Data (Public API for Websites / Forms)",
-    description="Endpoint for websites, landing pages, or external systems to submit customer data. Only 'phone' is required; all other fields are optional."
+    summary="Collect Customer Data (Requires SECRET_KEY)",
+    description="Endpoint to submit customer data. Requires SECRET_KEY in 'X-Secret-Key' header, 'Authorization: Bearer <SECRET_KEY>', query param '?secret_key=', or inside request body."
 )
 async def collect_customer(request: Request):
     """
     Accepts customer submission via JSON or Form Data.
+    Requires valid SECRET_KEY.
     Only `phone` is mandatory.
     Fields supported:
     - phone (Required)
-    - profile (Optional)
-    - name (Optional)
-    - email (Optional)
-    - address (Optional)
-    - landmark (Optional)
-    - pincode (Optional)
-    - city (Optional)
-    - state (Optional)
-    - from (Optional, e.g. 'website', 'contact-form', 'landing-page')
+    - profile, name, email, address, landmark, pincode, city, state, from (Optional)
     """
     content_type = request.headers.get("content-type", "").lower()
     payload = {}
@@ -69,7 +63,13 @@ async def collect_customer(request: Request):
             form = await request.form()
             payload = dict(form)
 
-    # Allow 'source' or 'from' in payload
+    # 1. Extract secret key if provided inside the body
+    body_secret_key = payload.pop("secret_key", None) or payload.pop("api_key", None)
+
+    # 2. Authenticate SECRET_KEY requirement
+    verify_api_secret_key(request, body_key=body_secret_key)
+
+    # 3. Allow 'source' or 'from' in payload
     if "from" in payload and "from_source" not in payload:
         payload["from_source"] = payload["from"]
 
@@ -115,7 +115,8 @@ async def collect_customer(request: Request):
 @router.get(
     "/customers",
     response_model=PaginatedCustomersResponse,
-    summary="Get List of Customers with Pagination & Filtering"
+    dependencies=[Depends(verify_api_secret_key)],
+    summary="Get List of Customers (Requires SECRET_KEY)"
 )
 def get_customers(
     search: Optional[str] = Query(None, description="Search term for name, phone, email, city, address"),
@@ -148,7 +149,8 @@ def get_customers(
 @router.get(
     "/customers/{customer_id}",
     response_model=CustomerResponse,
-    summary="Get Single Customer by ID"
+    dependencies=[Depends(verify_api_secret_key)],
+    summary="Get Single Customer by ID (Requires SECRET_KEY)"
 )
 def get_customer(customer_id: str):
     """Fetch details of a specific customer by ID."""
@@ -163,7 +165,8 @@ def get_customer(customer_id: str):
 @router.put(
     "/customers/{customer_id}",
     response_model=CustomerResponse,
-    summary="Update Customer Details"
+    dependencies=[Depends(verify_api_secret_key)],
+    summary="Update Customer Details (Requires SECRET_KEY)"
 )
 def update_customer(customer_id: str, data: CustomerUpdate):
     """Update details of an existing customer."""
@@ -181,7 +184,8 @@ def update_customer(customer_id: str, data: CustomerUpdate):
 
 @router.delete(
     "/customers/{customer_id}",
-    summary="Delete Customer Record"
+    dependencies=[Depends(verify_api_secret_key)],
+    summary="Delete Customer Record (Requires SECRET_KEY)"
 )
 def delete_customer(customer_id: str):
     """Delete a customer record by ID."""
@@ -196,7 +200,8 @@ def delete_customer(customer_id: str):
 @router.get(
     "/stats",
     response_model=DashboardStats,
-    summary="Customer Analytics & Statistics"
+    dependencies=[Depends(verify_api_secret_key)],
+    summary="Customer Analytics & Statistics (Requires SECRET_KEY)"
 )
 def get_stats():
     """Retrieve summary metrics, source distribution, and city counts."""
@@ -205,7 +210,8 @@ def get_stats():
 
 @router.get(
     "/sources",
-    summary="List Distinct Collection Sources"
+    dependencies=[Depends(verify_api_secret_key)],
+    summary="List Distinct Collection Sources (Requires SECRET_KEY)"
 )
 def get_sources():
     """Returns a list of all sources recorded across customers."""
