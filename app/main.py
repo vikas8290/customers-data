@@ -33,12 +33,25 @@ async def lifespan(app: FastAPI):
     db_manager.close()
 
 app = FastAPI(
-    title="Customer Data Hub & Portal",
-    description="Customer data collection API, MongoDB storage, Admin Portal, and Excel Export. Deployable on Render.",
+    title="Customer Data Hub & Portal - API Documentation",
+    description=(
+        "## Customer Data Collection API\n\n"
+        "Collect customer leads across web forms, landing pages, and external platforms into MongoDB with Excel export.\n\n"
+        "### 🔐 Authentication Requirements:\n"
+        "- **`X-Secret-Key`**: System-wide secret key (configured in Render environment variables).\n"
+        "- **`X-API-Key`**: Platform / User API Key (generated in the Users & API Keys portal).\n\n"
+        "**BOTH `SECRET_KEY` and `User API Key` are strictly required** for all customer operations (`POST`, `GET`, `PUT`, `DELETE`).\n\n"
+        "### 📌 Lead Attribution:\n"
+        "When data is submitted with a User API Key, the customer's `from` column is automatically tagged with the user/platform name.\n\n"
+        "*(Note: Interactive execution is disabled in this Swagger UI for documentation-only browsing)*"
+    ),
     version="1.0.0",
     lifespan=lifespan,
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    swagger_ui_parameters={
+        "supportedSubmitMethods": []  # Read-only document mode: disables live API execution in Swagger UI
+    }
 )
 
 # CORS Middleware (Allows any website to submit customer data to /api/customers)

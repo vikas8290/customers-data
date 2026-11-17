@@ -73,6 +73,14 @@
                             <i data-lucide="key" class="w-4 h-4"></i>
                             <span>Users & API Keys</span>
                         </a>
+                        <button
+                            type="button"
+                            onclick="openWebsiteCodeModal()"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 transition cursor-pointer"
+                        >
+                            <i data-lucide="code-2" class="w-4 h-4 text-indigo-500"></i>
+                            <span>Connect Website</span>
+                        </button>
                     </nav>
                     {% endif %}
                 </div>
@@ -114,8 +122,15 @@
                     href="/users"
                     class="flex-1 text-center py-1.5 rounded-lg font-semibold {% if request.url.path == '/users' %}bg-violet-50 text-violet-700{% else %}text-slate-600{% endif %}"
                 >
-                    Users & API Keys
+                    Users & Keys
                 </a>
+                <button
+                    type="button"
+                    onclick="openWebsiteCodeModal()"
+                    class="flex-1 text-center py-1.5 rounded-lg font-semibold text-slate-600 hover:text-indigo-600"
+                >
+                    Connect
+                </button>
             </div>
             {% endif %}
         </div>
@@ -126,6 +141,124 @@
         {% block content %}{% endblock %}
     </main>
 
+    <!-- Global Website Integration Code Modal (Accessible from any page via Header) -->
+    {% if request.session.get("admin_logged_in") %}
+    <div id="websiteModal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
+            <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                        <i data-lucide="code-2" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900">Connect Website / API Integration</h3>
+                        <p class="text-xs text-slate-500">Collect customer leads directly from any website, landing page, or frontend form</p>
+                    </div>
+                </div>
+                <button onclick="closeWebsiteCodeModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-6 text-sm">
+                <!-- Dual Key Requirement Callout -->
+                <div class="bg-amber-50/80 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+                    <div class="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0 mt-0.5">
+                        <i data-lucide="shield-alert" class="w-4 h-4"></i>
+                    </div>
+                    <div class="text-xs text-amber-900 space-y-1">
+                        <p class="font-bold text-amber-950">Dual Authentication Required for All API Calls:</p>
+                        <ul class="list-disc list-inside space-y-0.5 text-amber-800">
+                            <li><span class="font-semibold text-slate-900">SECRET_KEY</span>: Your master secret configured on Render (<code class="bg-amber-100 px-1 py-0.5 rounded font-mono">X-Secret-Key</code>).</li>
+                            <li><span class="font-semibold text-slate-900">User API Key</span>: Generated under <a href="/users" class="underline font-bold text-indigo-700">Users & API Keys</a> (<code class="bg-amber-100 px-1 py-0.5 rounded font-mono">X-API-Key</code>).</li>
+                        </ul>
+                        <p class="text-[11px] text-amber-700 pt-1">When leads are submitted with a User's API key, their platform name is automatically recorded in the <span class="font-semibold">From</span> column.</p>
+                    </div>
+                </div>
+
+                <!-- API Endpoint -->
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">API Endpoint (CORS Enabled)</p>
+                    <div class="flex items-center gap-2 bg-slate-900 text-emerald-400 font-mono text-xs p-3.5 rounded-xl">
+                        <span class="text-blue-400 font-bold">POST</span>
+                        <span id="apiEndpointUrl" class="font-mono text-slate-200">https://your-domain.onrender.com/api/customers</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 mt-1.5">Only <span class="font-semibold text-slate-700">phone</span> is strictly required. Name, email, address, landmark, city, state, pincode, and profile are optional.</p>
+                </div>
+
+                <!-- JavaScript Fetch Example -->
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">JavaScript / Frontend Website Code</p>
+                        <button onclick="copyModalCode('jsFetchCode', this)" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1">
+                            <i data-lucide="copy" class="w-3.5 h-3.5"></i> <span>Copy Code</span>
+                        </button>
+                    </div>
+                    <pre id="jsFetchCode" class="bg-slate-900 text-slate-100 font-mono text-xs p-4 rounded-xl overflow-x-auto leading-relaxed">
+// Collect customer lead from website/app
+async function submitCustomerLead() {
+  const response = await fetch('/api/customers', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Secret-Key': 'YOUR_SECRET_KEY',   // Master SECRET_KEY (REQUIRED)
+      'X-API-Key': 'YOUR_USER_API_KEY'     // User/Platform API Key (REQUIRED)
+    },
+    body: JSON.stringify({
+      phone: "+91 9876543210", // REQUIRED: only phone is mandatory
+      name: "Rohan Sharma",    // optional
+      email: "rohan@example.com", // optional
+      address: "123 Green Park",  // optional
+      landmark: "Near Metro",     // optional
+      city: "Jaipur",             // optional
+      state: "Rajasthan",         // optional
+      pincode: "302001",          // optional
+      profile: "Interested in service" // optional
+    })
+  });
+  const data = await response.json();
+  console.log('Lead submitted:', data);
+}</pre>
+                </div>
+
+                <!-- cURL Example -->
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">cURL Terminal Command</p>
+                        <button onclick="copyModalCode('curlCmdCode', this)" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1">
+                            <i data-lucide="copy" class="w-3.5 h-3.5"></i> <span>Copy cURL</span>
+                        </button>
+                    </div>
+                    <pre id="curlCmdCode" class="bg-slate-900 text-slate-100 font-mono text-xs p-4 rounded-xl overflow-x-auto leading-relaxed">
+curl -X POST https://your-domain.onrender.com/api/customers \
+  -H "Content-Type: application/json" \
+  -H "X-Secret-Key: YOUR_SECRET_KEY" \
+  -H "X-API-Key: YOUR_USER_API_KEY" \
+  -d '{
+    "phone": "9876543210",
+    "name": "Aarav Sharma",
+    "city": "Mumbai"
+  }'</pre>
+                </div>
+            </div>
+
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                <a href="/users" class="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
+                    <i data-lucide="key" class="w-4 h-4"></i>
+                    <span>Manage Platform API Keys</span>
+                </a>
+                <button
+                    type="button"
+                    onclick="closeWebsiteCodeModal()"
+                    class="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition"
+                >
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Footer -->
     <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500 mt-auto">
         <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
@@ -133,14 +266,54 @@
             <div class="flex items-center gap-4 text-slate-400">
                 <span>FastAPI + MongoDB</span>
                 <span>&bull;</span>
-                <a href="/docs" class="hover:text-blue-600 transition">Interactive API</a>
+                <a href="/docs" class="hover:text-blue-600 transition">API Documentation</a>
             </div>
         </div>
     </footer>
 
-    <!-- Initialize Lucide Icons -->
+    <!-- Initialize Lucide Icons & Global Header Modal Scripts -->
     <script>
         lucide.createIcons();
+
+        function openWebsiteCodeModal() {
+            const modal = document.getElementById('websiteModal');
+            if (modal) {
+                const endpointSpan = document.getElementById('apiEndpointUrl');
+                if (endpointSpan) {
+                    endpointSpan.innerText = window.location.origin + '/api/customers';
+                }
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                lucide.createIcons();
+            }
+        }
+
+        function closeWebsiteCodeModal() {
+            const modal = document.getElementById('websiteModal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+
+        function copyModalCode(elementId, btn) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            const text = el.innerText || el.textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                if (btn) {
+                    const originalHtml = btn.innerHTML;
+                    btn.innerHTML = '<span class="text-emerald-500 font-bold">Copied!</span>';
+                    setTimeout(() => { btn.innerHTML = originalHtml; lucide.createIcons(); }, 1800);
+                }
+            });
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeWebsiteCodeModal();
+            }
+        });
     </script>
     {% block scripts %}{% endblock %}
 </body>
