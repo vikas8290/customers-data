@@ -78,7 +78,7 @@ def generate_customers_excel(customers: list[CustomerInDB]) -> io.BytesIO:
             str(customer.phone or ""),
             str(customer.name or ""),
             str(customer.email or ""),
-            str(customer.from_source or "website"),
+            str(customer.from_source or "Customer"),
             str(customer.address or ""),
             str(customer.landmark or ""),
             str(customer.city or ""),

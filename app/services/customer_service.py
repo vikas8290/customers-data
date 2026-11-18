@@ -3,10 +3,22 @@ from typing import Optional, Any
 from bson import ObjectId
 from pymongo import DESCENDING
 from app.database import get_customers_collection, get_users_collection
-from app.models import CustomerCreate, CustomerUpdate, CustomerInDB
+from app.models import (
+    CustomerCreate,
+    CustomerUpdate,
+    CustomerInDB,
+    normalize_text_lower,
+    normalize_city,
+    normalize_state,
+    normalize_pincode,
+    normalize_profile,
+    NULL_EQUIVALENTS,
+)
+
+INVALID_LOCATION_VALS = {"", "none", "null", "nil", "na", "n/a", "-", "--", "undefined"}
 
 def doc_to_customer(doc: dict[str, Any]) -> CustomerInDB:
-    """Helper to convert MongoDB document to CustomerInDB model."""
+    """Helper to convert MongoDB document to CustomerInDB model with clean lowercase text."""
     doc_copy = dict(doc)
     doc_copy["id"] = str(doc_copy.pop("_id"))
     from_val = doc_copy.get("from")
@@ -14,8 +26,17 @@ def doc_to_customer(doc: dict[str, Any]) -> CustomerInDB:
         from_val = "Customer"
     doc_copy["from"] = from_val
     doc_copy["from_source"] = from_val
-    if doc_copy.get("profile") in ("", "null", "None", "-"):
-        doc_copy["profile"] = None
+
+    # Normalize fields to lowercase and clean null equivalents
+    doc_copy["profile"] = normalize_profile(doc_copy.get("profile"))
+    doc_copy["name"] = normalize_text_lower(doc_copy.get("name"))
+    doc_copy["email"] = normalize_text_lower(doc_copy.get("email"))
+    doc_copy["address"] = normalize_text_lower(doc_copy.get("address"))
+    doc_copy["landmark"] = normalize_text_lower(doc_copy.get("landmark"))
+    doc_copy["pincode"] = normalize_pincode(doc_copy.get("pincode"))
+    doc_copy["city"] = normalize_city(doc_copy.get("city"))
+    doc_copy["state"] = normalize_state(doc_copy.get("state"))
+
     return CustomerInDB(**doc_copy)
 
 def create_customer(
@@ -39,14 +60,14 @@ def create_customer(
     now = datetime.now(timezone.utc)
     doc = {
         "phone": phone,
-        "profile": data.profile.strip() if data.profile else None,
-        "name": data.name.strip() if data.name else None,
-        "email": data.email.strip().lower() if data.email else None,
-        "address": data.address.strip() if data.address else None,
-        "landmark": data.landmark.strip() if data.landmark else None,
-        "pincode": data.pincode.strip() if data.pincode else None,
-        "city": data.city.strip() if data.city else None,
-        "state": data.state.strip() if data.state else None,
+        "profile": normalize_profile(data.profile),
+        "name": normalize_text_lower(data.name),
+        "email": normalize_text_lower(data.email),
+        "address": normalize_text_lower(data.address),
+        "landmark": normalize_text_lower(data.landmark),
+        "pincode": normalize_pincode(data.pincode),
+        "city": normalize_city(data.city),
+        "state": normalize_state(data.state),
         "from": from_source,
         "data": data.data if data.data else None,
         "created_at": now,
@@ -95,9 +116,19 @@ def update_customer(customer_id: str, data: CustomerUpdate) -> Optional[Customer
     for key, value in data.model_dump(exclude_unset=True).items():
         if key == "from_source":
             update_data["from"] = value
+        elif key in ("name", "email", "address", "landmark"):
+            update_data[key] = normalize_text_lower(value)
+        elif key == "city":
+            update_data["city"] = normalize_city(value)
+        elif key == "state":
+            update_data["state"] = normalize_state(value)
+        elif key == "pincode":
+            update_data["pincode"] = normalize_pincode(value)
+        elif key == "profile":
+            update_data["profile"] = normalize_profile(value)
         elif isinstance(value, str):
-            val_clean = value.strip()
-            update_data[key] = val_clean if val_clean else None
+            val_clean = value.strip().lower()
+            update_data[key] = val_clean if val_clean not in NULL_EQUIVALENTS else None
         else:
             update_data[key] = value
             
@@ -223,16 +254,28 @@ def get_unique_sources() -> list[str]:
     return sorted(list(set(str(u).strip() for u in users if u and str(u).strip())))
 
 def get_unique_cities() -> list[str]:
-    """Get list of distinct city names."""
+    """Get sorted list of distinct city names in small letters."""
     col = get_customers_collection()
     cities = col.distinct("city")
-    return sorted([str(c).strip() for c in cities if c and str(c).strip()])
+    valid_cities = set()
+    for c in cities:
+        if c:
+            c_clean = str(c).strip().lower()
+            if c_clean not in INVALID_LOCATION_VALS:
+                valid_cities.add(c_clean)
+    return sorted(list(valid_cities))
 
 def get_unique_states() -> list[str]:
-    """Get list of distinct state names."""
+    """Get sorted list of distinct state names in small letters."""
     col = get_customers_collection()
     states = col.distinct("state")
-    return sorted([str(s).strip() for s in states if s and str(s).strip()])
+    valid_states = set()
+    for s in states:
+        if s:
+            s_clean = str(s).strip().lower()
+            if s_clean not in INVALID_LOCATION_VALS:
+                valid_states.add(s_clean)
+    return sorted(list(valid_states))
 
 def get_dashboard_stats() -> dict[str, Any]:
     """Compute dashboard analytics, metrics, and graph data."""
@@ -250,7 +293,7 @@ def get_dashboard_stats() -> dict[str, Any]:
     
     # 1. Sources breakdown
     sources_pipeline = [
-        {"$group": {"_id": {"$ifNull": ["$from", "website"]}, "count": {"$sum": 1}}},
+        {"$group": {"_id": {"$ifNull": ["$from", "Customer"]}, "count": {"$sum": 1}}},
         {"$sort": {"count": -1}},
         {"$limit": 10}
     ]
@@ -258,28 +301,54 @@ def get_dashboard_stats() -> dict[str, Any]:
         item["_id"]: item["count"] for item in col.aggregate(sources_pipeline)
     }
     
-    # 2. Top cities
+    # 2. Top cities (small letters, case-insensitive group, nil/null excluded)
     cities_pipeline = [
-        {"$match": {"city": {"$ne": None, "$ne": ""}}},
-        {"$group": {"_id": "$city", "count": {"$sum": 1}}},
+        {
+            "$match": {
+                "city": {
+                    "$ne": None,
+                    "$nin": ["", "nil", "NIL", "null", "NULL", "none", "NONE", "na", "NA", "n/a", "N/A", "-", "--"]
+                }
+            }
+        },
+        {
+            "$group": {
+                "_id": {"$toLower": {"$trim": {"input": "$city"}}},
+                "count": {"$sum": 1}
+            }
+        },
         {"$sort": {"count": -1}},
         {"$limit": 7}
     ]
     top_cities = [
         {"city": item["_id"], "count": item["count"]}
         for item in col.aggregate(cities_pipeline)
+        if item["_id"] not in INVALID_LOCATION_VALS
     ]
 
-    # 3. Top states
+    # 3. Top states (small letters, case-insensitive group, nil/null excluded)
     states_pipeline = [
-        {"$match": {"state": {"$ne": None, "$ne": ""}}},
-        {"$group": {"_id": "$state", "count": {"$sum": 1}}},
+        {
+            "$match": {
+                "state": {
+                    "$ne": None,
+                    "$nin": ["", "nil", "NIL", "null", "NULL", "none", "NONE", "na", "NA", "n/a", "N/A", "-", "--"]
+                }
+            }
+        },
+        {
+            "$group": {
+                "_id": {"$toLower": {"$trim": {"input": "$state"}}},
+                "count": {"$sum": 1}
+            }
+        },
         {"$sort": {"count": -1}},
         {"$limit": 7}
     ]
     top_states = [
         {"state": item["_id"], "count": item["count"]}
         for item in col.aggregate(states_pipeline)
+        if item["_id"] not in INVALID_LOCATION_VALS
     ]
 
     # 4. Daily Leads Graph Trend (Last 7 Days)

@@ -121,7 +121,7 @@
                     >
                         <option value="">All Cities</option>
                         {% for c in unique_cities %}
-                        <option value="{{ c }}" {% if city_filter == c %}selected{% endif %}>{{ c }}</option>
+                        <option value="{{ c }}" {% if city_filter == c %}selected{% endif %}>{{ c | title }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -136,7 +136,7 @@
                     >
                         <option value="">All States</option>
                         {% for st in unique_states %}
-                        <option value="{{ st }}" {% if state_filter == st %}selected{% endif %}>{{ st }}</option>
+                        <option value="{{ st }}" {% if state_filter == st %}selected{% endif %}>{{ st | title }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -250,7 +250,7 @@
                                     </div>
                                     {% endif %}
                                     <div>
-                                        <div class="font-bold text-slate-900 text-sm">{{ c.name or '-' }}</div>
+                                        <div class="font-bold text-slate-900 text-sm capitalize">{{ c.name or '-' }}</div>
                                         {% if c.profile and not (c.profile.startswith('http://') or c.profile.startswith('https://') or c.profile.startswith('data:image/')) %}
                                         <div class="text-xs text-slate-400 truncate max-w-[170px]" title="{{ c.profile }}">
                                             {{ c.profile }}
@@ -293,9 +293,9 @@
                             <td class="py-3.5 px-4">
                                 {% if c.city or c.state or c.pincode %}
                                 <div class="text-xs">
-                                    <span class="font-medium text-slate-800">{{ c.city or '' }}</span>
+                                    <span class="font-medium text-slate-800 capitalize">{{ c.city or '' }}</span>
                                     {% if c.city and c.state %}, {% endif %}
-                                    <span>{{ c.state or '' }}</span>
+                                    <span class="capitalize">{{ c.state or '' }}</span>
                                     {% if c.pincode %}
                                     <span class="text-slate-400 font-mono">({{ c.pincode }})</span>
                                     {% endif %}

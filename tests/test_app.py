@@ -240,7 +240,7 @@ def test_dashboard_charts_and_city_state_filters():
     assert list_res.status_code == 200
     list_data = list_res.json()
     assert list_data["total"] >= 1
-    assert any(c["city"] == "Jodhpur" for c in list_data["items"])
+    assert any(c["city"] == "jodhpur" for c in list_data["items"])
 
     # 4. Test API Excel export with city and state filters
     api_excel_res = client.get(
@@ -568,6 +568,77 @@ def test_unavailable_user_defaults_to_customer():
     assert c3.from_source == "Customer"
     print("✓ Unavailable user correctly stores under standard Customer (portal@customer.com)")
 
+def test_all_data_stored_in_small_letters_and_no_duplicates():
+    test_user = get_or_create_test_user()
+    valid_sk = settings.SECRET_KEY
+    valid_ak = test_user.api_key
+
+    random_suffix = str(int(time.time() * 100))[-8:]
+    phone = f"94{random_suffix}"
+
+    # 1. Submit all uppercase & mixed case text
+    resp = client.post(
+        "/api/customers",
+        headers={"X-Secret-Key": valid_sk, "X-API-Key": valid_ak},
+        json={
+            "phone": phone,
+            "name": "VIKAS KUMAWAT",
+            "email": "VIKAS@GMAIL.COM",
+            "city": "PUNE",
+            "state": "MAHARASHTRA",
+            "address": "FLAT 402, GULMOHAR APARTMENTS",
+            "landmark": "OPP CITY MALL",
+            "pincode": "411001",
+        }
+    )
+    assert resp.status_code == 201
+    cust = resp.json()["data"]
+    assert cust["name"] == "vikas kumawat"
+    assert cust["email"] == "vikas@gmail.com"
+    assert cust["city"] == "pune"
+    assert cust["state"] == "maharashtra"
+    assert cust["address"] == "flat 402, gulmohar apartments"
+    assert cust["landmark"] == "opp city mall"
+
+    # 2. Submit NIL / NULL / - values
+    phone2 = f"94{str(int(time.time() * 100) + 1)[-8:]}"
+    resp2 = client.post(
+        "/api/customers",
+        headers={"X-Secret-Key": valid_sk, "X-API-Key": valid_ak},
+        json={
+            "phone": phone2,
+            "city": "NIL",
+            "state": "null",
+            "pincode": "-",
+            "profile": "NONE"
+        }
+    )
+    assert resp2.status_code == 201
+    cust2 = resp2.json()["data"]
+    assert cust2["city"] is None
+    assert cust2["state"] is None
+    assert cust2["pincode"] is None
+    assert cust2["profile"] is None
+
+    # 3. Verify top cities & states on dashboard contain NO duplicate cities/states and NO 'nil'
+    stats = customer_service.get_dashboard_stats()
+    top_cities = [c["city"] for c in stats["top_cities"]]
+    top_states = [s["state"] for s in stats["top_states"]]
+
+    # Ensure no duplicates
+    assert len(top_cities) == len(set(top_cities))
+    assert len(top_states) == len(set(top_states))
+
+    # Ensure all are small letters
+    for c in top_cities:
+        assert c == c.lower()
+        assert c not in ("nil", "null", "none", "-")
+    for s in top_states:
+        assert s == s.lower()
+        assert s not in ("nil", "null", "none", "-")
+
+    print("✓ All customer data stored in small letters, nil cleaned to null, and no duplicate cities/states verified")
+
 if __name__ == "__main__":
     test_normalize_indian_phone_unit()
     test_health_check()
@@ -585,4 +656,5 @@ if __name__ == "__main__":
     test_profile_not_available_null_sent()
     test_connect_website_modal_with_languages_and_data_column()
     test_unavailable_user_defaults_to_customer()
+    test_all_data_stored_in_small_letters_and_no_duplicates()
     print("ALL TESTS PASSED SUCCESSFULLY!")

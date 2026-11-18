@@ -1,7 +1,87 @@
 from datetime import datetime, timezone
 from typing import Optional, Any
 from pydantic import BaseModel, Field, ConfigDict, field_validator
+import html
 import re
+
+NULL_EQUIVALENTS = {"null", "none", "undefined", "nil", "na", "n/a", "-", "--", ""}
+
+def normalize_text_lower(v: Any) -> Optional[str]:
+    """Clean string, filter out null/nil values, and convert to small letters (lowercase)."""
+    if v is None:
+        return None
+    s = str(v).strip()
+    if not s:
+        return None
+    s_lower = s.lower()
+    if s_lower in NULL_EQUIVALENTS:
+        return None
+    return s_lower
+
+def normalize_city(v: Any) -> Optional[str]:
+    """Clean city, filter out null/nil, convert to small letters, and standardize common variations."""
+    cleaned = normalize_text_lower(v)
+    if not cleaned:
+        return None
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    if cleaned in ("ahmadabad",):
+        return "ahmedabad"
+    return cleaned
+
+def normalize_state(v: Any) -> Optional[str]:
+    """Clean state, unescape HTML entities, convert to small letters, and standardize common variations."""
+    if v is None:
+        return None
+    s = str(v).strip()
+    if not s:
+        return None
+    s = html.unescape(s).strip().lower()
+    while "&amp;" in s:
+        s = html.unescape(s)
+    s = re.sub(r"\s+", " ", s).strip()
+    if s in NULL_EQUIVALENTS:
+        return None
+    if s in ("chattisgarh",):
+        return "chhattisgarh"
+    if "jammu" in s and "kashmir" in s:
+        return "jammu and kashmir"
+    if "andaman" in s and "nicobar" in s:
+        return "andaman and nicobar islands"
+    if "dadra" in s and "nagar" in s:
+        return "dadra and nagar haveli and daman and diu"
+    if s in ("up", "uttar  pradesh"):
+        return "uttar pradesh"
+    if s in ("mp",):
+        return "madhya pradesh"
+    if s in ("mh",):
+        return "maharashtra"
+    if s in ("rajsthan",):
+        return "rajasthan"
+    if s in ("gujrat", "gujarat."):
+        return "gujarat"
+    if s in ("uttrakhand",):
+        return "uttarakhand"
+    if s in ("west bangal",):
+        return "west bengal"
+    if s in ("tamilnadu",):
+        return "tamil nadu"
+    return s
+
+def normalize_pincode(v: Any) -> Optional[str]:
+    if v is None:
+        return None
+    s = str(v).strip()
+    if not s or s.lower() in NULL_EQUIVALENTS:
+        return None
+    return s
+
+def normalize_profile(v: Any) -> Optional[str]:
+    if v is None:
+        return None
+    s = str(v).strip()
+    if not s or s.lower() in NULL_EQUIVALENTS:
+        return None
+    return s
 
 def normalize_indian_phone(phone_input: str) -> str:
     """
@@ -88,32 +168,32 @@ class CustomerBase(BaseModel):
     @field_validator("profile", mode="before")
     @classmethod
     def clean_profile(cls, v: Any) -> Optional[str]:
-        if v is None:
-            return None
-        v_str = str(v).strip()
-        if not v_str or v_str.lower() in ("null", "none", "undefined", "n/a", "-", ""):
-            return None
-        return v_str
+        return normalize_profile(v)
 
-    @field_validator("name", "address", "landmark", "city", "state", "pincode", mode="before")
+    @field_validator("name", "address", "landmark", mode="before")
     @classmethod
-    def clean_optional_strings(cls, v: Any) -> Optional[str]:
-        if v is None:
-            return None
-        v_str = str(v).strip()
-        if not v_str or v_str.lower() in ("null", "none", "undefined"):
-            return None
-        return v_str
+    def clean_text_fields(cls, v: Any) -> Optional[str]:
+        return normalize_text_lower(v)
 
-    @field_validator("email")
+    @field_validator("city", mode="before")
     @classmethod
-    def clean_email(cls, v: Optional[str]) -> Optional[str]:
-        if v:
-            v = v.strip().lower()
-            if not v or v in ("null", "none"):
-                return None
-            return v
-        return None
+    def clean_city(cls, v: Any) -> Optional[str]:
+        return normalize_city(v)
+
+    @field_validator("state", mode="before")
+    @classmethod
+    def clean_state(cls, v: Any) -> Optional[str]:
+        return normalize_state(v)
+
+    @field_validator("pincode", mode="before")
+    @classmethod
+    def clean_pincode(cls, v: Any) -> Optional[str]:
+        return normalize_pincode(v)
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def clean_email(cls, v: Any) -> Optional[str]:
+        return normalize_text_lower(v)
 
 class CustomerCreate(CustomerBase):
     pass
@@ -167,32 +247,32 @@ class CustomerUpdate(BaseModel):
     @field_validator("profile", mode="before")
     @classmethod
     def clean_profile(cls, v: Any) -> Optional[str]:
-        if v is None:
-            return None
-        v_str = str(v).strip()
-        if not v_str or v_str.lower() in ("null", "none", "undefined", "n/a", "-", ""):
-            return None
-        return v_str
+        return normalize_profile(v)
 
-    @field_validator("name", "address", "landmark", "city", "state", "pincode", mode="before")
+    @field_validator("name", "address", "landmark", mode="before")
     @classmethod
-    def clean_optional_strings(cls, v: Any) -> Optional[str]:
-        if v is None:
-            return None
-        v_str = str(v).strip()
-        if not v_str or v_str.lower() in ("null", "none", "undefined"):
-            return None
-        return v_str
+    def clean_text_fields(cls, v: Any) -> Optional[str]:
+        return normalize_text_lower(v)
 
-    @field_validator("email")
+    @field_validator("city", mode="before")
     @classmethod
-    def clean_email(cls, v: Optional[str]) -> Optional[str]:
-        if v:
-            v = v.strip().lower()
-            if not v or v in ("null", "none"):
-                return None
-            return v
-        return None
+    def clean_city(cls, v: Any) -> Optional[str]:
+        return normalize_city(v)
+
+    @field_validator("state", mode="before")
+    @classmethod
+    def clean_state(cls, v: Any) -> Optional[str]:
+        return normalize_state(v)
+
+    @field_validator("pincode", mode="before")
+    @classmethod
+    def clean_pincode(cls, v: Any) -> Optional[str]:
+        return normalize_pincode(v)
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def clean_email(cls, v: Any) -> Optional[str]:
+        return normalize_text_lower(v)
 
 class CustomerInDB(CustomerBase):
     id: str
