@@ -9,7 +9,7 @@ load_dotenv(BASE_DIR / ".env")
 class Settings:
     PORT: int = int(os.getenv("PORT", "8000"))
     HOST: str = os.getenv("HOST", "0.0.0.0")
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "customer-portal-secret-key-render-deploy-2024")
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "uFNj1xDgFM9ONAtp")
     
     # MongoDB
     MONGO_URI: str = os.getenv(

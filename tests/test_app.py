@@ -422,7 +422,7 @@ def test_dedicated_customers_page_and_searchable_selects():
 
     assert "Customer Records" in html
     assert "searchable-select" in html
-    assert "Extra Data" in html
+    assert "Extra Data" not in html
     assert "All Users" in html
     assert "All Cities" in html
     assert "All States" in html
@@ -498,23 +498,22 @@ def test_connect_website_modal_with_languages_and_data_column():
     assert 'id="pane-javascript"' in html
     assert 'id="pane-other"' in html
 
-    # 4. Verify new column 'data' is documented and included in snippets
-    assert "New Column: Extra JSON Data" in html
-    assert "'data'     => [" in html      # PHP syntax
-    assert '"data": {' in html            # Python / Terminal / Node / JS JSON syntax
+    # 4. Verify YOUR_SECRET_KEY uFNj1xDgFM9ONAtp is present in snippets and modal
+    assert "uFNj1xDgFM9ONAtp" in html
+    assert "New Column: Extra JSON Data" not in html
     assert "switchConnectTab" in html
 
-    # 5. Verify /docs API documentation has data column and integration types
+    # 5. Verify /docs API documentation has integration types and SECRET_KEY
     docs_resp = client.get("/openapi.json")
     assert docs_resp.status_code == 200
     docs_json = docs_resp.json()
     description = docs_json.get("info", {}).get("description", "")
-    assert "Extra Data Column (`data`)" in description
+    assert "uFNj1xDgFM9ONAtp" in description
     assert "PHP" in description
     assert "Python" in description
     assert "Terminal / CLI" in description
     assert "Node.js" in description
-    print("✓ Connect Website modal with PHP, Python, Terminal, Node, JS, Other & data column verified")
+    print("✓ Connect Website modal with PHP, Python, Terminal, Node, JS, Other & SECRET_KEY verified")
 
 def test_unavailable_user_defaults_to_customer():
     # 1. API submission using fixed DEFAULT_CUSTOMER_API_KEY

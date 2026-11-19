@@ -50,7 +50,6 @@ def generate_customers_excel(customers: list[CustomerInDB]) -> io.BytesIO:
         "State",
         "Pincode",
         "Profile / Notes",
-        "Extra Data (JSON)",
     ]
 
     ws.append(headers)
@@ -85,7 +84,6 @@ def generate_customers_excel(customers: list[CustomerInDB]) -> io.BytesIO:
             str(customer.state or ""),
             str(customer.pincode or ""),
             str(customer.profile or ""),
-            json.dumps(customer.data, ensure_ascii=False) if customer.data else "",
         ]
         ws.append(row)
 

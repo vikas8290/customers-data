@@ -216,7 +216,6 @@
                         <th class="py-3.5 px-4">Phone & Email</th>
                         <th class="py-3.5 px-4">Location</th>
                         <th class="py-3.5 px-4">Source & Date (IST)</th>
-                        <th class="py-3.5 px-4">Extra Data</th>
                         <th class="py-3.5 px-4 text-center">Actions</th>
                     </tr>
                 </thead>
@@ -320,18 +319,6 @@
                                 </div>
                             </td>
 
-                            <!-- 5. Extra Data (JSON) -->
-                            <td class="py-3.5 px-4 max-w-[200px]">
-                                {% if c.data %}
-                                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 text-xs font-mono max-w-full" title="{{ c.data }}">
-                                    <i data-lucide="braces" class="w-3.5 h-3.5 text-amber-600 shrink-0"></i>
-                                    <span class="truncate">{{ c.data | tojson }}</span>
-                                </div>
-                                {% else %}
-                                <span class="text-xs text-slate-300">-</span>
-                                {% endif %}
-                            </td>
-
                             <!-- Actions -->
                             <td class="py-3.5 px-4 text-center whitespace-nowrap">
                                 <div class="inline-flex items-center gap-1">
@@ -376,7 +363,7 @@
                         {% endfor %}
                     {% else %}
                         <tr>
-                            <td colspan="7" class="text-center py-16">
+                            <td colspan="6" class="text-center py-16">
                                 <div class="w-14 h-14 mx-auto rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 mb-3">
                                     <i data-lucide="search-x" class="w-7 h-7"></i>
                                 </div>
@@ -637,18 +624,6 @@
                 {% endif %}
             </div>
 
-            <!-- Extra Data (JSON) -->
-            <div>
-                <label class="block text-xs font-semibold uppercase text-slate-700 mb-1">Extra Data (JSON, Optional)</label>
-                <textarea
-                    name="data"
-                    rows="2"
-                    placeholder='{"notes": "VIP client", "order_id": 9921, "custom_field": "value"}'
-                    class="w-full px-3.5 py-2 text-xs font-mono rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                ></textarea>
-                <p class="text-[11px] text-slate-400 mt-0.5">Store any custom key-value attributes in JSON format.</p>
-            </div>
-
             <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
                 <button
                     type="button"
@@ -800,19 +775,6 @@
                 {% endif %}
             </div>
 
-            <!-- Extra Data (JSON) -->
-            <div>
-                <label class="block text-xs font-semibold uppercase text-slate-700 mb-1">Extra Data (JSON Format, Optional)</label>
-                <textarea
-                    id="edit_data"
-                    name="data"
-                    rows="2"
-                    placeholder='{"notes": "VIP client", "order_id": 9921}'
-                    class="w-full px-3.5 py-2 text-xs font-mono rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                ></textarea>
-                <p class="text-[11px] text-slate-400 mt-0.5">Custom JSON key-value data.</p>
-            </div>
-
             <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
                 <button
                     type="button"
@@ -945,15 +907,6 @@
                 </div>
             </div>
 
-            ${customer.data && Object.keys(customer.data).length > 0 ? `
-                <div class="space-y-1.5 pt-2 border-t border-slate-100">
-                    <span class="text-xs uppercase font-bold text-slate-500 flex items-center gap-1">
-                        <i data-lucide="braces" class="w-3.5 h-3.5 text-amber-600"></i> Extra Data (JSON)
-                    </span>
-                    <pre class="bg-slate-900 text-amber-300 p-3 rounded-xl text-xs font-mono overflow-x-auto leading-relaxed border border-slate-800 max-h-48">${JSON.stringify(customer.data, null, 2)}</pre>
-                </div>
-            ` : ''}
-
             <div class="pt-2 text-xs text-slate-400 border-t border-slate-100 flex items-center justify-between">
                 <span>Record ID: <code class="text-slate-600">${customer.id}</code></span>
                 <span>${createdDate}</span>
@@ -980,7 +933,6 @@
         document.getElementById('edit_city').value = customer.city || '';
         document.getElementById('edit_state').value = customer.state || '';
         document.getElementById('edit_pincode').value = customer.pincode || '';
-        document.getElementById('edit_data').value = (customer.data && Object.keys(customer.data).length > 0) ? JSON.stringify(customer.data, null, 2) : '';
 
         const sourceVal = customer.from || customer.from_source || '';
         const sourceElem = document.getElementById('edit_from_source');

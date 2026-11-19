@@ -196,33 +196,21 @@
                     <div class="text-xs text-amber-900 space-y-1">
                         <p class="font-bold text-amber-950">Dual Authentication Required for All API Calls:</p>
                         <ul class="list-disc list-inside space-y-0.5 text-amber-800">
-                            <li><span class="font-semibold text-slate-900">SECRET_KEY</span>: Your master secret configured on Render (<code class="bg-amber-100 px-1 py-0.5 rounded font-mono">X-Secret-Key</code>).</li>
+                            <li><span class="font-semibold text-slate-900">SECRET_KEY</span>: <code class="bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded font-mono font-bold select-all">uFNj1xDgFM9ONAtp</code> (<code class="font-mono">X-Secret-Key</code>).</li>
                             <li><span class="font-semibold text-slate-900">User API Key</span>: Generated under <a href="/users" class="underline font-bold text-indigo-700">Users & API Keys</a> (<code class="bg-amber-100 px-1 py-0.5 rounded font-mono">X-API-Key</code>). Default Platform Key: <code class="bg-indigo-100 text-indigo-900 px-1.5 py-0.5 rounded font-mono font-bold select-all">key_live_4cd32dfa2caa35276ca9f53446267f9c</code> (Platform: <span class="font-semibold">Customer</span> / <span class="font-mono text-[11px]">portal@customer.com</span>).</li>
                         </ul>
                         <p class="text-[11px] text-amber-700 pt-1">When leads are submitted with a User's API key, their platform name is automatically recorded in the <span class="font-semibold">From</span> column.</p>
                     </div>
                 </div>
 
-                <!-- API Endpoint & Data Column Callout -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">API Endpoint (CORS Enabled)</p>
-                        <div class="flex items-center gap-2 bg-slate-900 text-emerald-400 font-mono text-xs p-3.5 rounded-xl border border-slate-800">
-                            <span class="text-blue-400 font-bold">POST</span>
-                            <span id="apiEndpointUrl" class="font-mono text-slate-200 truncate">https://your-domain.onrender.com/api/customers</span>
-                        </div>
-                        <p class="text-[11px] text-slate-500 mt-1.5">Only <span class="font-semibold text-slate-700">phone</span> is required (Indian 10-digit or +91 format, stored as <code class="font-mono text-indigo-600 bg-indigo-50 px-1 py-0.5 rounded font-bold">+91XXXXXXXXXX</code>, unique).</p>
+                <!-- API Endpoint Callout -->
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">API Endpoint (CORS Enabled)</p>
+                    <div class="flex items-center gap-2 bg-slate-900 text-emerald-400 font-mono text-xs p-3.5 rounded-xl border border-slate-800">
+                        <span class="text-blue-400 font-bold">POST</span>
+                        <span id="apiEndpointUrl" class="font-mono text-slate-200 truncate">https://your-domain.onrender.com/api/customers</span>
                     </div>
-
-                    <div class="bg-indigo-50/70 border border-indigo-200 rounded-xl p-3.5">
-                        <div class="flex items-center gap-1.5 mb-1 text-xs font-bold text-indigo-950">
-                            <i data-lucide="layers" class="w-4 h-4 text-indigo-600"></i>
-                            <span>New Column: Extra JSON Data (<code class="font-mono bg-indigo-100 px-1 py-0.5 rounded">data</code>)</span>
-                        </div>
-                        <p class="text-[11px] text-indigo-800 leading-relaxed">
-                            Send any custom fields as a JSON object inside <code class="font-mono font-semibold bg-white/80 px-1 py-0.5 rounded border border-indigo-200">data</code> (e.g. <code class="font-mono">{"plan": "Gold", "lead_score": 95, "budget": 50000}</code>). Stored in MongoDB, visible in Customer Directory, and exported in Excel.
-                        </p>
-                    </div>
+                    <p class="text-[11px] text-slate-500 mt-1.5">Only <span class="font-semibold text-slate-700">phone</span> is required (Indian 10-digit or +91 format, stored as <code class="font-mono text-indigo-600 bg-indigo-50 px-1 py-0.5 rounded font-bold">+91XXXXXXXXXX</code>, unique).</p>
                 </div>
 
                 <!-- Fields Reference Table -->
@@ -235,10 +223,6 @@
                         <div class="py-1.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-slate-700">
                             <span><strong class="text-rose-600">phone</strong> <span class="text-slate-400 font-sans">(required, string)</span></span>
                             <span class="text-slate-500 font-sans text-[11px]">10 digits or +91XXXXXXXXXX (normalized & unique)</span>
-                        </div>
-                        <div class="py-1.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-slate-700">
-                            <span><strong class="text-indigo-600">data</strong> <span class="text-slate-400 font-sans">(optional, json object)</span></span>
-                            <span class="text-slate-500 font-sans text-[11px]">Extra custom data (e.g. {"plan": "Pro", "score": 95})</span>
                         </div>
                         <div class="py-1.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-slate-700">
                             <span><strong>profile</strong> <span class="text-slate-400 font-sans">(optional, string/null)</span></span>
@@ -286,7 +270,7 @@
                     <!-- Tab 1: PHP -->
                     <div id="pane-php" class="connect-tab-pane">
                         <div class="flex items-center justify-between mb-1.5">
-                            <span class="text-xs text-slate-500 font-medium">PHP (cURL Request with Extra JSON Data)</span>
+                            <span class="text-xs text-slate-500 font-medium">PHP (cURL Request)</span>
                             <button onclick="copyModalCode('code-php', this)" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1 cursor-pointer">
                                 <i data-lucide="copy" class="w-3.5 h-3.5"></i> <span>Copy PHP Code</span>
                             </button>
@@ -296,10 +280,10 @@
 $apiUrl = 'https://your-domain.onrender.com/api/customers';
 
 // Dual Authentication Keys
-$secretKey = 'YOUR_SECRET_KEY';   // Master SECRET_KEY (REQUIRED)
+$secretKey = 'uFNj1xDgFM9ONAtp';                          // Master SECRET_KEY (REQUIRED)
 $apiKey    = 'key_live_4cd32dfa2caa35276ca9f53446267f9c'; // User API Key: Customer (portal@customer.com)
 
-// Customer Data Payload with Extra JSON 'data' Column
+// Customer Data Payload
 $payload = [
     'phone'    => '9876543210',        // REQUIRED: 10-digit Indian phone or +919876543210
     'name'     => 'Aarav Sharma',      // optional
@@ -307,15 +291,7 @@ $payload = [
     'city'     => 'Jaipur',            // optional
     'state'    => 'Rajasthan',         // optional
     'pincode'  => '302001',            // optional
-    'profile'  => null,                // optional (Avatar image URL or null)
-    // Extra custom attributes stored in 'data' column as JSON
-    'data'     => [
-        'plan'          => 'Enterprise',
-        'campaign'      => 'Google_Ads',
-        'budget'        => 50000,
-        'lead_score'    => 95,
-        'interest'      => 'Web Development'
-    ]
+    'profile'  => null                 // optional (Avatar image URL or null)
 ];
 
 $ch = curl_init($apiUrl);
@@ -345,7 +321,7 @@ curl_close($ch);
                     <!-- Tab 2: Python -->
                     <div id="pane-python" class="connect-tab-pane hidden">
                         <div class="flex items-center justify-between mb-1.5">
-                            <span class="text-xs text-slate-500 font-medium">Python (requests library with Extra JSON Data)</span>
+                            <span class="text-xs text-slate-500 font-medium">Python (requests library)</span>
                             <button onclick="copyModalCode('code-python', this)" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1 cursor-pointer">
                                 <i data-lucide="copy" class="w-3.5 h-3.5"></i> <span>Copy Python Code</span>
                             </button>
@@ -357,7 +333,7 @@ API_URL = "https://your-domain.onrender.com/api/customers"
 
 HEADERS = {
     "Content-Type": "application/json",
-    "X-Secret-Key": "YOUR_SECRET_KEY",    # Master SECRET_KEY (REQUIRED)
+    "X-Secret-Key": "uFNj1xDgFM9ONAtp",                         # Master SECRET_KEY (REQUIRED)
     "X-API-Key": "key_live_4cd32dfa2caa35276ca9f53446267f9c"  # User API Key: Customer (portal@customer.com)
 }
 
@@ -368,15 +344,7 @@ payload = {
     "city": "Jaipur",                   # optional
     "state": "Rajasthan",                # optional
     "pincode": "302001",                 # optional
-    "profile": None,                     # optional (Avatar URL or null/None)
-    # Extra custom attributes stored in 'data' column as JSON
-    "data": {
-        "plan": "Enterprise",
-        "campaign": "Google_Ads",
-        "budget": 50000,
-        "lead_score": 95,
-        "interest": "Web Development"
-    }
+    "profile": None                      # optional (Avatar URL or null/None)
 }
 
 response = requests.post(API_URL, headers=HEADERS, json=payload)
@@ -395,7 +363,7 @@ print("Response JSON:", response.json())</pre>
                         <pre id="code-terminal" class="modal-code-snippet bg-slate-900 text-slate-100 font-mono text-xs p-4 rounded-xl overflow-x-auto leading-relaxed border border-slate-800"># Terminal / cURL Customer Submission
 curl -X POST https://your-domain.onrender.com/api/customers \
   -H "Content-Type: application/json" \
-  -H "X-Secret-Key: YOUR_SECRET_KEY" \
+  -H "X-Secret-Key: uFNj1xDgFM9ONAtp" \
   -H "X-API-Key: key_live_4cd32dfa2caa35276ca9f53446267f9c" \
   -d '{
     "phone": "9876543210",
@@ -404,21 +372,14 @@ curl -X POST https://your-domain.onrender.com/api/customers \
     "city": "Jaipur",
     "state": "Rajasthan",
     "pincode": "302001",
-    "profile": null,
-    "data": {
-      "plan": "Enterprise",
-      "campaign": "Google_Ads",
-      "budget": 50000,
-      "lead_score": 95,
-      "interest": "Web Development"
-    }
+    "profile": null
   }'</pre>
                     </div>
 
                     <!-- Tab 4: Node.js -->
                     <div id="pane-node" class="connect-tab-pane hidden">
                         <div class="flex items-center justify-between mb-1.5">
-                            <span class="text-xs text-slate-500 font-medium">Node.js (Fetch / Axios with Extra JSON Data)</span>
+                            <span class="text-xs text-slate-500 font-medium">Node.js (Fetch / Axios)</span>
                             <button onclick="copyModalCode('code-node', this)" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1 cursor-pointer">
                                 <i data-lucide="copy" class="w-3.5 h-3.5"></i> <span>Copy Node.js Code</span>
                             </button>
@@ -433,15 +394,7 @@ const payload = {
   city: 'Jaipur',                    // optional
   state: 'Rajasthan',                // optional
   pincode: '302001',                 // optional
-  profile: null,                     // optional (Avatar URL or null)
-  // Extra custom attributes stored in 'data' column as JSON
-  data: {
-    plan: 'Enterprise',
-    campaign: 'Google_Ads',
-    budget: 50000,
-    lead_score: 95,
-    interest: 'Web Development'
-  }
+  profile: null                      // optional (Avatar URL or null)
 };
 
 async function sendLead() {
@@ -450,8 +403,8 @@ async function sendLead() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Secret-Key': 'YOUR_SECRET_KEY',   // Master SECRET_KEY (REQUIRED)
-        'X-API-Key': 'key_live_4cd32dfa2caa35276ca9f53446267f9c'     // User API Key: Customer (portal@customer.com)
+        'X-Secret-Key': 'uFNj1xDgFM9ONAtp',                         // Master SECRET_KEY (REQUIRED)
+        'X-API-Key': 'key_live_4cd32dfa2caa35276ca9f53446267f9c'   // User API Key: Customer (portal@customer.com)
       },
       body: JSON.stringify(payload)
     });
@@ -483,8 +436,8 @@ async function submitCustomerLead(event) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Secret-Key': 'YOUR_SECRET_KEY',   // Master SECRET_KEY (REQUIRED)
-      'X-API-Key': 'key_live_4cd32dfa2caa35276ca9f53446267f9c'     // User API Key: Customer (portal@customer.com)
+      'X-Secret-Key': 'uFNj1xDgFM9ONAtp',                         // Master SECRET_KEY (REQUIRED)
+      'X-API-Key': 'key_live_4cd32dfa2caa35276ca9f53446267f9c'   // User API Key: Customer (portal@customer.com)
     },
     body: JSON.stringify({
       phone: document.getElementById('phone')?.value || '9876543210', // REQUIRED
@@ -493,14 +446,7 @@ async function submitCustomerLead(event) {
       city: document.getElementById('city')?.value || 'Jaipur',
       state: document.getElementById('state')?.value || 'Rajasthan',
       pincode: document.getElementById('pincode')?.value || '302001',
-      profile: null, // Send null when image is not available
-      // Extra custom attributes stored in 'data' column as JSON
-      data: {
-        plan: 'Gold',
-        referrer: document.referrer || 'direct',
-        source_url: window.location.href,
-        submitted_at: new Date().toISOString()
-      }
+      profile: null // Send null when image is not available
     })
   });
 
@@ -528,9 +474,6 @@ async function submitCustomerLead(event) {
   &lt;input type="email" id="custEmail" placeholder="Email Address" /&gt;
   &lt;input type="text" id="custCity" placeholder="City" /&gt;
   
-  &lt;!-- Custom Extra Data Fields --&gt;
-  &lt;input type="hidden" id="custPlan" value="Gold Member" /&gt;
-  
   &lt;button type="submit"&gt;Submit Inquiry&lt;/button&gt;
 &lt;/form&gt;
 
@@ -541,7 +484,7 @@ async function handleCustomerForm(e) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Secret-Key': 'YOUR_SECRET_KEY',
+      'X-Secret-Key': 'uFNj1xDgFM9ONAtp',
       'X-API-Key': 'key_live_4cd32dfa2caa35276ca9f53446267f9c'
     },
     body: JSON.stringify({
@@ -549,12 +492,7 @@ async function handleCustomerForm(e) {
       name: document.getElementById('custName').value,
       email: document.getElementById('custEmail').value,
       city: document.getElementById('custCity').value,
-      profile: null,
-      data: {
-        plan: document.getElementById('custPlan').value,
-        lead_origin: 'Landing Page Banner',
-        user_agent: navigator.userAgent
-      }
+      profile: null
     })
   });
   const json = await res.json();
